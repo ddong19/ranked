@@ -1,21 +1,68 @@
-// TypeScript interfaces matching your Django backend models
+// TypeScript interfaces matching Supabase database schema
 
-export interface RankingItem {
-  id: number; // Django auto-generated ID
-  name: string; // matches your Item.name field
-  notes?: string; // matches your Item.notes field
-  rank: number; // matches your Item.rank field
-  ranking: number; // foreign key to RankingList ID
+// Supabase Database Type Definitions
+export interface Database {
+  public: {
+    Tables: {
+      ranking: {
+        Row: {
+          id: number;
+          title: string;
+          description: string | null;
+        };
+        Insert: {
+          id?: number;
+          title: string;
+          description?: string | null;
+        };
+        Update: {
+          id?: number;
+          title?: string;
+          description?: string | null;
+        };
+      };
+      item: {
+        Row: {
+          id: number;
+          name: string;
+          notes: string | null;
+          rank: number;
+          ranking_id: number;
+        };
+        Insert: {
+          id?: number;
+          name: string;
+          notes?: string | null;
+          rank: number;
+          ranking_id: number;
+        };
+        Update: {
+          id?: number;
+          name?: string;
+          notes?: string | null;
+          rank?: number;
+          ranking_id?: number;
+        };
+      };
+    };
+  };
 }
 
-export interface RankingList {
-  id: number; // Django auto-generated ID
-  title: string; // matches your RankingList.title field
-  description?: string; // matches your RankingList.description field
-  items?: RankingItem[]; // populated items for this ranking
+// Application Types (matching Supabase schema)
+export type Ranking = Database['public']['Tables']['ranking']['Row'];
+export type RankingInsert = Database['public']['Tables']['ranking']['Insert'];
+export type RankingUpdate = Database['public']['Tables']['ranking']['Update'];
+
+export type Item = Database['public']['Tables']['item']['Row'];
+export type ItemInsert = Database['public']['Tables']['item']['Insert'];
+export type ItemUpdate = Database['public']['Tables']['item']['Update'];
+
+// Extended types for app usage
+export interface RankingWithItems extends Ranking {
+  item: Item[];
 }
 
-// Additional interfaces for API responses
+// API Request types
 export interface CreateRankingRequest {
   title: string;
   description?: string;
@@ -25,7 +72,7 @@ export interface CreateItemRequest {
   name: string;
   notes?: string;
   rank: number;
-  ranking: number;
+  ranking_id: number;
 }
 
 export interface UpdateItemRankRequest {
@@ -34,15 +81,8 @@ export interface UpdateItemRankRequest {
 }
 
 // Local state management types
-export interface LocalRankingState {
-  rankings: RankingList[];
+export interface RankingsState {
+  rankings: RankingWithItems[];
   loading: boolean;
   error: string | null;
 }
-
-// Suggested additions for your Django models:
-// 1. Add created_at and updated_at timestamps
-// 2. Add user field for multi-user support: user = models.ForeignKey(User, on_delete=models.CASCADE)
-// 3. Add category field: category = models.CharField(max_length=50, blank=True)
-// 4. Add color field: color = models.CharField(max_length=7, default="#0a7ea4")  // hex color
-// 5. Add is_public field: is_public = models.BooleanField(default=False)

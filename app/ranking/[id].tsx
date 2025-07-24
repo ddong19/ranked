@@ -1,45 +1,46 @@
-import { View, StyleSheet, Alert } from 'react-native';
+import { View, StyleSheet, Alert, Text, FlatList, TouchableOpacity } from 'react-native';
 import { useLocalSearchParams, useRouter } from 'expo-router';
 import { useState, useEffect } from 'react';
 import { SafeAreaView } from 'react-native-safe-area-context';
+import { Ionicons } from '@expo/vector-icons';
 
-import { RankingList } from '@/types/rankings';
+import { RankingWithItems } from '@/types/rankings';
+import { useRankings } from '@/hooks/useRankings';
 
 export default function RankingDetailScreen() {
-  const { id } = useLocalSearchParams<{ id: string }>();
+  const { id, rankingData } = useLocalSearchParams<{ id: string; rankingData?: string }>();
   const router = useRouter();
-  const [ranking, setRanking] = useState<RankingList | null>(null);
-  const [loading, setLoading] = useState(true);
+  const { getRanking, loading } = useRankings();
+  const [ranking, setRanking] = useState<RankingWithItems | null>(null);
+  const [initialized, setInitialized] = useState(false);
 
   useEffect(() => {
-    loadRanking();
-  }, [id]);
-
-  const loadRanking = async () => {
-    try {
-      // TODO: Replace with actual API call to your Supabase backend
-      // For now, we'll use mock data
-      const mockRanking: RankingList = {
-        id: parseInt(id),
-        title: 'Travel Locations',
-        description: 'Favorite places I\'ve traveled to',
-        items: [
-          { id: 1, name: 'Lake Lucerne, Switzerland', rank: 1, ranking: parseInt(id) },
-          { id: 2, name: 'Zion National Park, Utah', rank: 2, ranking: parseInt(id) },
-          { id: 3, name: 'Bryce Canyon, Utah', rank: 3, ranking: parseInt(id) },
-          { id: 4, name: 'Lake Louise, Banff', rank: 4, ranking: parseInt(id) },
-          { id: 5, name: 'Johnson Canyon, Banff', rank: 5, ranking: parseInt(id) },
-        ]
-      };
-      
-      setRanking(mockRanking);
-    } catch (error) {
-      Alert.alert('Error', 'Failed to load ranking');
-      router.back();
-    } finally {
-      setLoading(false);
+    if (initialized) return; // Prevent multiple runs
+    
+    // First try to use passed ranking data
+    if (rankingData) {
+      try {
+        const parsedRanking = JSON.parse(rankingData);
+        setRanking(parsedRanking);
+        setInitialized(true);
+        return;
+      } catch (error) {
+        console.error('Failed to parse ranking data:', error);
+      }
     }
-  };
+
+    // Fallback to useRankings if no data passed or parsing failed
+    if (id && !loading) {
+      const foundRanking = getRanking(parseInt(id));
+      if (foundRanking) {
+        setRanking(foundRanking);
+      } else {
+        Alert.alert('Error', 'Ranking not found');
+        router.back();
+      }
+      setInitialized(true);
+    }
+  }, [id]); // Only depend on stable id
 
   const handleAddItem = () => {
     // TODO: Navigate to add item screen
@@ -51,26 +52,68 @@ export default function RankingDetailScreen() {
     console.log('Reordering items:', newItems);
   };
 
-  if (loading) {
+  if (loading || !ranking) {
     return (
       <SafeAreaView style={styles.container}>
         <View style={styles.loadingContainer}>
-          {/* TODO: Add loading spinner */}
+          <Text style={styles.loadingText}>Loading ranking...</Text>
         </View>
       </SafeAreaView>
     );
   }
 
-  if (!ranking) {
-    return null;
-  }
-
   return (
     <SafeAreaView style={styles.container}>
+      <View style={styles.header}>
+        <View style={styles.headerTop}>
+          <Ionicons name="list" size={24} color="#fff" />
+          <Text style={styles.appTitle}>RANKED</Text>
+          <TouchableOpacity style={styles.profileButton}>
+            <Ionicons name="person-circle-outline" size={28} color="#fff" />
+          </TouchableOpacity>
+        </View>
+      </View>
+
       <View style={styles.content}>
-        {/* TODO: Add header with title and edit button */}
-        {/* TODO: Add draggable list component */}
-        {/* TODO: Add floating add button */}
+        <Text style={styles.sectionTitle}>{ranking.title}</Text>
+        <Text style={styles.sectionDescription}>
+          {ranking.description || ''}
+        </Text>
+        
+        <FlatList
+          data={ranking.item || []}
+          renderItem={({ item }) => (
+            <View style={styles.itemCard}>
+              <View style={styles.rankBadge}>
+                <Text style={styles.rankText}>{item.rank}</Text>
+              </View>
+              <View style={styles.itemContent}>
+                <Text style={styles.itemName}>{item.name}</Text>
+                {item.notes && (
+                  <Text style={styles.itemNotes}>{item.notes}</Text>
+                )}
+              </View>
+            </View>
+          )}
+          keyExtractor={(item) => item.id.toString()}
+          contentContainerStyle={styles.listContainer}
+          showsVerticalScrollIndicator={false}
+          ListEmptyComponent={
+            <View style={styles.emptyContainer}>
+              <Text style={styles.emptyText}>No items yet</Text>
+              <Text style={styles.emptySubtext}>Tap "Add Item" to start ranking</Text>
+            </View>
+          }
+        />
+
+        <TouchableOpacity 
+          style={styles.addButton}
+          onPress={handleAddItem}
+          activeOpacity={0.8}
+        >
+          <Ionicons name="add" size={24} color="#666" />
+          <Text style={styles.addButtonText}>ADD ITEM</Text>
+        </TouchableOpacity>
       </View>
     </SafeAreaView>
   );
@@ -79,15 +122,119 @@ export default function RankingDetailScreen() {
 const styles = StyleSheet.create({
   container: {
     flex: 1,
-    backgroundColor: '#151718', // Dark background to match your design
+    backgroundColor: '#151718',
+  },
+  header: {
+    paddingHorizontal: 16,
+    paddingBottom: 16,
+  },
+  headerTop: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    justifyContent: 'space-between',
+  },
+  appTitle: {
+    color: '#fff',
+    fontSize: 18,
+    fontWeight: 'bold',
+    letterSpacing: 1,
+  },
+  profileButton: {
+    padding: 4,
   },
   content: {
     flex: 1,
+    paddingHorizontal: 16,
+  },
+  sectionTitle: {
+    color: '#fff',
+    fontSize: 28,
+    fontWeight: 'bold',
+    marginBottom: 8,
+  },
+  sectionDescription: {
+    color: '#999',
+    fontSize: 14,
+    marginBottom: 24,
+    lineHeight: 20,
+  },
+  listContainer: {
+    paddingBottom: 100,
+  },
+  itemCard: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    backgroundColor: '#2a2a2a',
+    borderRadius: 12,
     padding: 16,
+    marginBottom: 12,
+  },
+  rankBadge: {
+    width: 32,
+    height: 32,
+    borderRadius: 16,
+    backgroundColor: '#0a7ea4',
+    alignItems: 'center',
+    justifyContent: 'center',
+    marginRight: 16,
+  },
+  rankText: {
+    color: '#fff',
+    fontSize: 16,
+    fontWeight: 'bold',
+  },
+  itemContent: {
+    flex: 1,
+  },
+  itemName: {
+    color: '#fff',
+    fontSize: 18,
+    fontWeight: '600',
+    marginBottom: 4,
+  },
+  itemNotes: {
+    color: '#999',
+    fontSize: 14,
+    lineHeight: 18,
+  },
+  addButton: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    justifyContent: 'center',
+    paddingVertical: 16,
+    marginTop: 20,
+  },
+  addButtonText: {
+    color: '#666',
+    fontSize: 14,
+    fontWeight: '600',
+    marginLeft: 8,
+    letterSpacing: 0.5,
   },
   loadingContainer: {
     flex: 1,
     justifyContent: 'center',
     alignItems: 'center',
+  },
+  loadingText: {
+    color: '#999',
+    fontSize: 16,
+  },
+  emptyContainer: {
+    flex: 1,
+    justifyContent: 'center',
+    alignItems: 'center',
+    paddingVertical: 40,
+  },
+  emptyText: {
+    color: '#999',
+    fontSize: 18,
+    fontWeight: '600',
+    marginBottom: 8,
+  },
+  emptySubtext: {
+    color: '#666',
+    fontSize: 14,
+    textAlign: 'center',
   },
 });

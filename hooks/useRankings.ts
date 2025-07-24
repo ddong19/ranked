@@ -1,17 +1,19 @@
 import { useState, useEffect } from 'react';
-import AsyncStorage from '@react-native-async-storage/async-storage';
-import uuid from 'react-native-uuid';
-
-import { RankingList, RankingItem, CreateRankingRequest, CreateItemRequest } from '@/types/rankings';
-
-const STORAGE_KEY = 'rankings';
+import { supabase } from '@/lib/supabase';
+import { 
+  RankingWithItems, 
+  Item, 
+  CreateRankingRequest, 
+  CreateItemRequest,
+  RankingsState 
+} from '@/types/rankings';
 
 export function useRankings() {
-  const [rankings, setRankings] = useState<RankingList[]>([]);
+  const [rankings, setRankings] = useState<RankingWithItems[]>([]);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
 
-  // Load rankings from AsyncStorage on mount
+  // Load rankings from Supabase on mount
   useEffect(() => {
     loadRankings();
   }, []);
@@ -21,120 +23,171 @@ export function useRankings() {
       setLoading(true);
       setError(null);
       
-      const stored = await AsyncStorage.getItem(STORAGE_KEY);
-      if (stored) {
-        const parsedRankings = JSON.parse(stored);
-        setRankings(parsedRankings);
-      } else {
-        // Initialize with default rankings to match your screenshots
-        const defaultRankings = getDefaultRankings();
-        setRankings(defaultRankings);
-        await AsyncStorage.setItem(STORAGE_KEY, JSON.stringify(defaultRankings));
+      const { data, error: supabaseError } = await supabase
+        .from('ranking')
+        .select(`
+          *,
+          item (*)
+        `)
+        .order('id');
+
+      if (supabaseError) {
+        throw supabaseError;
       }
-    } catch (err) {
-      setError('Failed to load rankings');
+
+      // Sort items by rank within each ranking
+      const rankingsWithSortedItems = data?.map(ranking => ({
+        ...ranking,
+        item: ranking.item.sort((a, b) => a.rank - b.rank)
+      })) || [];
+
+      setRankings(rankingsWithSortedItems);
+    } catch (err: any) {
+      setError(err.message || 'Failed to load rankings');
       console.error('Error loading rankings:', err);
     } finally {
       setLoading(false);
     }
   };
 
-  const saveRankings = async (newRankings: RankingList[]) => {
+  const createRanking = async (data: CreateRankingRequest): Promise<RankingWithItems> => {
     try {
-      await AsyncStorage.setItem(STORAGE_KEY, JSON.stringify(newRankings));
-      setRankings(newRankings);
-    } catch (err) {
-      setError('Failed to save rankings');
-      console.error('Error saving rankings:', err);
-    }
-  };
+      const { data: newRanking, error: supabaseError } = await supabase
+        .from('ranking')
+        .insert([{
+          title: data.title,
+          description: data.description
+        }])
+        .select()
+        .single();
 
-  const createRanking = async (data: CreateRankingRequest): Promise<RankingList> => {
-    try {
-      const newRanking: RankingList = {
-        id: Date.now(), // Temporary ID until we have Supabase
-        title: data.title,
-        description: data.description,
-        items: [],
-      };
+      if (supabaseError) {
+        throw supabaseError;
+      }
 
-      const updatedRankings = [...rankings, newRanking];
-      await saveRankings(updatedRankings);
+      const rankingWithItems = { ...newRanking, item: [] };
+      setRankings(prev => [...prev, rankingWithItems]);
       
-      return newRanking;
-    } catch (err) {
-      setError('Failed to create ranking');
+      return rankingWithItems;
+    } catch (err: any) {
+      setError(err.message || 'Failed to create ranking');
       throw err;
     }
   };
 
-  const updateRanking = async (id: number, updates: Partial<RankingList>) => {
+  const updateRanking = async (id: number, updates: Partial<RankingWithItems>) => {
     try {
-      const updatedRankings = rankings.map(ranking =>
+      const { error: supabaseError } = await supabase
+        .from('ranking')
+        .update({
+          title: updates.title,
+          description: updates.description
+        })
+        .eq('id', id);
+
+      if (supabaseError) {
+        throw supabaseError;
+      }
+
+      setRankings(prev => prev.map(ranking =>
         ranking.id === id ? { ...ranking, ...updates } : ranking
-      );
-      await saveRankings(updatedRankings);
-    } catch (err) {
-      setError('Failed to update ranking');
+      ));
+    } catch (err: any) {
+      setError(err.message || 'Failed to update ranking');
       throw err;
     }
   };
 
   const deleteRanking = async (id: number) => {
     try {
-      const updatedRankings = rankings.filter(ranking => ranking.id !== id);
-      await saveRankings(updatedRankings);
-    } catch (err) {
-      setError('Failed to delete ranking');
+      const { error: supabaseError } = await supabase
+        .from('ranking')
+        .delete()
+        .eq('id', id);
+
+      if (supabaseError) {
+        throw supabaseError;
+      }
+
+      setRankings(prev => prev.filter(ranking => ranking.id !== id));
+    } catch (err: any) {
+      setError(err.message || 'Failed to delete ranking');
       throw err;
     }
   };
 
-  const addItem = async (rankingId: number, data: CreateItemRequest): Promise<RankingItem> => {
+  const addItem = async (rankingId: number, data: CreateItemRequest): Promise<Item> => {
     try {
-      const newItem: RankingItem = {
-        id: Date.now(), // Temporary ID until we have Supabase
-        name: data.name,
-        notes: data.notes,
-        rank: data.rank,
-        ranking: rankingId,
-      };
+      const { data: newItem, error: supabaseError } = await supabase
+        .from('item')
+        .insert([{
+          name: data.name,
+          notes: data.notes,
+          rank: data.rank,
+          ranking_id: rankingId
+        }])
+        .select()
+        .single();
 
-      const updatedRankings = rankings.map(ranking => {
+      if (supabaseError) {
+        throw supabaseError;
+      }
+
+      // Update local state
+      setRankings(prev => prev.map(ranking => {
         if (ranking.id === rankingId) {
           return {
             ...ranking,
-            items: [...(ranking.items || []), newItem].sort((a, b) => a.rank - b.rank)
+            item: [...ranking.item, newItem].sort((a, b) => a.rank - b.rank)
           };
         }
         return ranking;
-      });
+      }));
 
-      await saveRankings(updatedRankings);
       return newItem;
-    } catch (err) {
-      setError('Failed to add item');
+    } catch (err: any) {
+      setError(err.message || 'Failed to add item');
       throw err;
     }
   };
 
-  const updateItemRanks = async (rankingId: number, items: RankingItem[]) => {
+  const updateItemRanks = async (rankingId: number, items: Item[]) => {
     try {
-      const updatedRankings = rankings.map(ranking => {
+      // Update each item's rank in Supabase
+      const updates = items.map((item, index) => 
+        supabase
+          .from('item')
+          .update({ rank: index + 1 })
+          .eq('id', item.id)
+      );
+
+      const results = await Promise.all(updates);
+      
+      // Check for errors
+      const errors = results.filter(result => result.error);
+      if (errors.length > 0) {
+        throw new Error('Failed to update some item ranks');
+      }
+
+      // Update local state with new ranks
+      const updatedItems = items.map((item, index) => ({
+        ...item,
+        rank: index + 1
+      }));
+
+      setRankings(prev => prev.map(ranking => {
         if (ranking.id === rankingId) {
-          return { ...ranking, items };
+          return { ...ranking, item: updatedItems };
         }
         return ranking;
-      });
-      
-      await saveRankings(updatedRankings);
-    } catch (err) {
-      setError('Failed to update item ranks');
+      }));
+    } catch (err: any) {
+      setError(err.message || 'Failed to update item ranks');
       throw err;
     }
   };
 
-  const getRanking = (id: number): RankingList | undefined => {
+  const getRanking = (id: number): RankingWithItems | undefined => {
     return rankings.find(ranking => ranking.id === id);
   };
 
@@ -151,54 +204,3 @@ export function useRankings() {
     refreshRankings: loadRankings,
   };
 }
-
-// Default rankings to match your screenshots
-function getDefaultRankings(): RankingList[] {
-  return [
-    {
-      id: 1,
-      title: 'Movies',
-      description: 'List of my favorite movies',
-      items: [],
-    },
-    {
-      id: 2,
-      title: 'Travel Locations',
-      description: 'Favorite places I\'ve traveled to',
-      items: [
-        { id: 1, name: 'Lake Lucerne, Switzerland', rank: 1, ranking: 2 },
-        { id: 2, name: 'Zion National Park, Utah', rank: 2, ranking: 2 },
-        { id: 3, name: 'Bryce Canyon, Utah', rank: 3, ranking: 2 },
-        { id: 4, name: 'Lake Louise, Banff', rank: 4, ranking: 2 },
-        { id: 5, name: 'Johnson Canyon, Banff', rank: 5, ranking: 2 },
-      ],
-    },
-    {
-      id: 3,
-      title: 'Restaurants',
-      description: 'Best restaurants I\'ve been to',
-      items: [],
-    },
-    {
-      id: 4,
-      title: 'NBA Players',
-      description: 'My ranking of GOATs',
-      items: [],
-    },
-  ];
-}
-
-// TODO: Replace with Supabase API calls
-// Example of how this hook will be modified for Supabase:
-/*
-const createRanking = async (data: CreateRankingRequest): Promise<RankingList> => {
-  const { data: newRanking, error } = await supabase
-    .from('ranking_list')
-    .insert([data])
-    .select()
-    .single();
-  
-  if (error) throw error;
-  return newRanking;
-};
-*/

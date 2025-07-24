@@ -1,38 +1,57 @@
-import { View, StyleSheet, FlatList, TouchableOpacity, Text, Alert } from 'react-native';
-import { useRouter } from 'expo-router';
-import { SafeAreaView } from 'react-native-safe-area-context';
 import { Ionicons } from '@expo/vector-icons';
+import { useRouter, useLocalSearchParams } from 'expo-router';
+import { FlatList, StyleSheet, Text, TouchableOpacity, View } from 'react-native';
+import { SafeAreaView } from 'react-native-safe-area-context';
+import { useEffect } from 'react';
 
 import { useRankings } from '@/hooks/useRankings';
-import { RankingList } from '@/types/rankings';
+import { RankingWithItems } from '@/types/rankings';
 
 export default function Index() {
   const router = useRouter();
-  const { rankings, loading } = useRankings();
+  const { refresh } = useLocalSearchParams();
+  const { rankings, loading, refreshRankings } = useRankings();
 
-  const handleRankingPress = (ranking: RankingList) => {
-    router.push(`/ranking/${ranking.id}`);
+  // Check for refresh parameter and reload data
+  useEffect(() => {
+    if (refresh === 'true') {
+      refreshRankings();
+      // Clean up the parameter
+      router.replace('/');
+    }
+  }, [refresh, refreshRankings, router]);
+
+  const handleRankingPress = (ranking: RankingWithItems) => {
+    router.push({
+      pathname: `/ranking/[id]`,
+      params: { 
+        id: ranking.id.toString(), 
+        rankingData: JSON.stringify(ranking) 
+      }
+    });
   };
 
   const handleAddRanking = () => {
     router.push('/add-ranking');
   };
 
-  const renderRankingCard = ({ item }: { item: RankingList }) => (
+  const renderRankingCard = ({ item }: { item: RankingWithItems }) => (
     <TouchableOpacity 
       style={styles.rankingCard}
       onPress={() => handleRankingPress(item)}
       activeOpacity={0.7}
     >
       <View style={styles.cardContent}>
-        <Text style={styles.cardTitle}>{item.title}</Text>
-        {item.description && (
-          <Text style={styles.cardDescription}>{item.description}</Text>
-        )}
-        <View style={styles.cardFooter}>
-          <Text style={styles.itemCount}>
-            {item.items?.length || 0} items
+        <View style={styles.cardLeft}>
+          <Text style={styles.cardTitle}>{item.title}</Text>
+          <Text style={styles.cardDescription}>
+            {item.description || ''}
           </Text>
+          <Text style={styles.itemCount}>
+            {item.item?.length || 0} items
+          </Text>
+        </View>
+        <View style={styles.cardRight}>
           <Ionicons name="chevron-forward" size={20} color="#666" />
         </View>
       </View>
@@ -128,7 +147,17 @@ const styles = StyleSheet.create({
     overflow: 'hidden',
   },
   cardContent: {
+    flexDirection: 'row',
+    alignItems: 'center',
     padding: 20,
+  },
+  cardLeft: {
+    flex: 1,
+    marginRight: 16,
+  },
+  cardRight: {
+    alignItems: 'center',
+    justifyContent: 'center',
   },
   cardTitle: {
     color: '#fff',
@@ -139,13 +168,8 @@ const styles = StyleSheet.create({
   cardDescription: {
     color: '#999',
     fontSize: 14,
-    marginBottom: 16,
     lineHeight: 20,
-  },
-  cardFooter: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    justifyContent: 'space-between',
+    marginBottom: 8,
   },
   itemCount: {
     color: '#666',

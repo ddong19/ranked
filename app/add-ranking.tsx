@@ -5,9 +5,11 @@ import { SafeAreaView } from 'react-native-safe-area-context';
 import { Text } from 'react-native';
 
 import { CreateRankingRequest } from '@/types/rankings';
+import { useRankings } from '@/hooks/useRankings';
 
 export default function AddRankingScreen() {
   const router = useRouter();
+  const { createRanking } = useRankings();
   const [title, setTitle] = useState('');
   const [description, setDescription] = useState('');
   const [loading, setLoading] = useState(false);
@@ -20,22 +22,18 @@ export default function AddRankingScreen() {
 
     setLoading(true);
     try {
-      const newRanking: CreateRankingRequest = {
+      const newRankingData: CreateRankingRequest = {
         title: title.trim(),
         description: description.trim() || undefined,
       };
 
-      // TODO: Replace with actual API call to your Supabase backend
-      console.log('Creating ranking:', newRanking);
+      // Create ranking using Supabase
+      await createRanking(newRankingData);
       
-      // Simulate API call
-      await new Promise(resolve => setTimeout(resolve, 1000));
-      
-      Alert.alert('Success', 'Ranking created successfully!', [
-        { text: 'OK', onPress: () => router.back() }
-      ]);
-    } catch (error) {
-      Alert.alert('Error', 'Failed to create ranking');
+      // Navigate back with refresh parameter to update home screen
+      router.push('/?refresh=true');
+    } catch (error: any) {
+      Alert.alert('Error', error.message || 'Failed to create ranking');
     } finally {
       setLoading(false);
     }
