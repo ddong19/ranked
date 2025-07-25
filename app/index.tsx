@@ -1,8 +1,8 @@
 import { Ionicons } from '@expo/vector-icons';
-import { useRouter, useLocalSearchParams } from 'expo-router';
+import { useLocalSearchParams, useRouter } from 'expo-router';
+import { useEffect } from 'react';
 import { FlatList, StyleSheet, Text, TouchableOpacity, View } from 'react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
-import { useEffect } from 'react';
 
 import { useRankings } from '@/hooks/useRankings';
 import { RankingWithItems } from '@/types/rankings';
@@ -58,15 +58,6 @@ export default function Index() {
     </TouchableOpacity>
   );
 
-  if (loading) {
-    return (
-      <SafeAreaView style={styles.container}>
-        <View style={styles.loadingContainer}>
-          <Text style={styles.loadingText}>Loading your rankings...</Text>
-        </View>
-      </SafeAreaView>
-    );
-  }
 
   return (
     <SafeAreaView style={styles.container}>
@@ -190,14 +181,5 @@ const styles = StyleSheet.create({
     fontWeight: '600',
     marginLeft: 8,
     letterSpacing: 0.5,
-  },
-  loadingContainer: {
-    flex: 1,
-    justifyContent: 'center',
-    alignItems: 'center',
-  },
-  loadingText: {
-    color: '#999',
-    fontSize: 16,
   },
 });

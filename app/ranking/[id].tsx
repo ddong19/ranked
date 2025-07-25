@@ -1,11 +1,11 @@
-import { View, StyleSheet, Alert, Text, FlatList, TouchableOpacity } from 'react-native';
-import { useLocalSearchParams, useRouter } from 'expo-router';
-import { useState, useEffect } from 'react';
-import { SafeAreaView } from 'react-native-safe-area-context';
 import { Ionicons } from '@expo/vector-icons';
+import { useLocalSearchParams, useRouter } from 'expo-router';
+import { useEffect, useState } from 'react';
+import { Alert, FlatList, StyleSheet, Text, TouchableOpacity, View } from 'react-native';
+import { SafeAreaView } from 'react-native-safe-area-context';
 
-import { RankingWithItems } from '@/types/rankings';
 import { useRankings } from '@/hooks/useRankings';
+import { RankingWithItems } from '@/types/rankings';
 
 export default function RankingDetailScreen() {
   const { id, rankingData } = useLocalSearchParams<{ id: string; rankingData?: string }>();
@@ -52,14 +52,9 @@ export default function RankingDetailScreen() {
     console.log('Reordering items:', newItems);
   };
 
-  if (loading || !ranking) {
-    return (
-      <SafeAreaView style={styles.container}>
-        <View style={styles.loadingContainer}>
-          <Text style={styles.loadingText}>Loading ranking...</Text>
-        </View>
-      </SafeAreaView>
-    );
+  // Don't render anything until we have ranking data
+  if (!ranking) {
+    return null;
   }
 
   return (
@@ -82,19 +77,30 @@ export default function RankingDetailScreen() {
         
         <FlatList
           data={ranking.item || []}
-          renderItem={({ item }) => (
-            <View style={styles.itemCard}>
-              <View style={styles.rankBadge}>
-                <Text style={styles.rankText}>{item.rank}</Text>
+          renderItem={({ item }) => {
+            const getRankTextStyle = () => {
+              if (item.rank === 1) return styles.goldText;
+              if (item.rank === 2) return styles.silverText;
+              if (item.rank === 3) return styles.bronzeText;
+              return styles.rankNumberText;
+            };
+
+            return (
+              <View style={styles.itemCard}>
+                <View style={styles.rankNumber}>
+                  <Text style={getRankTextStyle()}>
+                    {item.rank}
+                  </Text>
+                </View>
+                <View style={styles.itemContent}>
+                  <Text style={styles.itemName}>{item.name}</Text>
+                  {item.notes && (
+                    <Text style={styles.itemNotes}>{item.notes}</Text>
+                  )}
+                </View>
               </View>
-              <View style={styles.itemContent}>
-                <Text style={styles.itemName}>{item.name}</Text>
-                {item.notes && (
-                  <Text style={styles.itemNotes}>{item.notes}</Text>
-                )}
-              </View>
-            </View>
-          )}
+            );
+          }}
           keyExtractor={(item) => item.id.toString()}
           contentContainerStyle={styles.listContainer}
           showsVerticalScrollIndicator={false}
@@ -169,16 +175,28 @@ const styles = StyleSheet.create({
     padding: 16,
     marginBottom: 12,
   },
-  rankBadge: {
-    width: 32,
-    height: 32,
-    borderRadius: 16,
-    backgroundColor: '#0a7ea4',
+  rankNumber: {
+    width: 16,
     alignItems: 'center',
     justifyContent: 'center',
-    marginRight: 16,
+    marginRight: 12,
   },
-  rankText: {
+  goldText: {
+    color: '#D4AF37',
+    fontSize: 16,
+    fontWeight: 'bold',
+  },
+  silverText: {
+    color: '#C0C0C0',
+    fontSize: 16,
+    fontWeight: 'bold',
+  },
+  bronzeText: {
+    color: '#CD7F32',
+    fontSize: 16,
+    fontWeight: 'bold',
+  },
+  rankNumberText: {
     color: '#fff',
     fontSize: 16,
     fontWeight: 'bold',
@@ -189,8 +207,8 @@ const styles = StyleSheet.create({
   itemName: {
     color: '#fff',
     fontSize: 18,
-    fontWeight: '600',
-    marginBottom: 4,
+    fontWeight: '500',
+    marginBottom: 1,
   },
   itemNotes: {
     color: '#999',
@@ -210,15 +228,6 @@ const styles = StyleSheet.create({
     fontWeight: '600',
     marginLeft: 8,
     letterSpacing: 0.5,
-  },
-  loadingContainer: {
-    flex: 1,
-    justifyContent: 'center',
-    alignItems: 'center',
-  },
-  loadingText: {
-    color: '#999',
-    fontSize: 16,
   },
   emptyContainer: {
     flex: 1,
