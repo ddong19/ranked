@@ -4,6 +4,7 @@ import { useEffect, useState } from 'react';
 import { Alert, FlatList, StyleSheet, Text, TouchableOpacity, View } from 'react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
 
+import AppHeader from '@/components/AppHeader';
 import { useRankings } from '@/hooks/useRankings';
 import { RankingWithItems } from '@/types/rankings';
 
@@ -59,15 +60,7 @@ export default function RankingDetailScreen() {
 
   return (
     <SafeAreaView style={styles.container}>
-      <View style={styles.header}>
-        <View style={styles.headerTop}>
-          <Ionicons name="list" size={24} color="#fff" />
-          <Text style={styles.appTitle}>RANKED</Text>
-          <TouchableOpacity style={styles.profileButton}>
-            <Ionicons name="person-circle-outline" size={28} color="#fff" />
-          </TouchableOpacity>
-        </View>
-      </View>
+      <AppHeader />
 
       <View style={styles.content}>
         <Text style={[styles.sectionTitle, !ranking.description && styles.sectionTitleNoDescription]}>
@@ -130,24 +123,6 @@ const styles = StyleSheet.create({
   container: {
     flex: 1,
     backgroundColor: '#151718',
-  },
-  header: {
-    paddingHorizontal: 16,
-    paddingBottom: 16,
-  },
-  headerTop: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    justifyContent: 'space-between',
-  },
-  appTitle: {
-    color: '#fff',
-    fontSize: 18,
-    fontWeight: 'bold',
-    letterSpacing: 1,
-  },
-  profileButton: {
-    padding: 4,
   },
   content: {
     flex: 1,
