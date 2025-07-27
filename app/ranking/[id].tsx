@@ -133,6 +133,7 @@ const styles = StyleSheet.create({
     fontSize: 28,
     fontWeight: 'bold',
     marginBottom: 8,
+    marginLeft: 10
   },
   sectionTitleNoDescription: {
     marginBottom: 16,
@@ -142,6 +143,7 @@ const styles = StyleSheet.create({
     fontSize: 14,
     marginBottom: 24,
     lineHeight: 20,
+    marginLeft: 10
   },
   listContainer: {
     paddingBottom: 100,
