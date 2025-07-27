@@ -1,6 +1,6 @@
 import { Ionicons } from '@expo/vector-icons';
-import { useLocalSearchParams, useRouter } from 'expo-router';
-import { useEffect } from 'react';
+import { useRouter, useFocusEffect } from 'expo-router';
+import React from 'react';
 import { FlatList, StyleSheet, Text, TouchableOpacity, View } from 'react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
 
@@ -10,17 +10,14 @@ import { RankingWithItems } from '@/types/rankings';
 
 export default function Index() {
   const router = useRouter();
-  const { refresh } = useLocalSearchParams();
   const { rankings, loading, refreshRankings } = useRankings();
 
-  // Check for refresh parameter and reload data
-  useEffect(() => {
-    if (refresh === 'true') {
+  // Refresh data whenever screen comes into focus
+  useFocusEffect(
+    React.useCallback(() => {
       refreshRankings();
-      // Clean up the parameter
-      router.replace('/');
-    }
-  }, [refresh, refreshRankings, router]);
+    }, [refreshRankings])
+  );
 
   const handleRankingPress = (ranking: RankingWithItems) => {
     router.push({

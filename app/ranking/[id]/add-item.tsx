@@ -1,46 +1,60 @@
 import { View, StyleSheet, Alert, TextInput, TouchableOpacity } from 'react-native';
-import { useRouter } from 'expo-router';
+import { useRouter, useLocalSearchParams } from 'expo-router';
 import { useState } from 'react';
 import { SafeAreaView } from 'react-native-safe-area-context';
 import { Text } from 'react-native';
 
-import { CreateRankingRequest } from '@/types/rankings';
+import { CreateItemRequest } from '@/types/rankings';
 import { useRankings } from '@/hooks/useRankings';
 
-export default function AddRankingScreen() {
+export default function AddItemScreen() {
   const router = useRouter();
-  const { createRanking } = useRankings();
-  const [title, setTitle] = useState('');
-  const [description, setDescription] = useState('');
+  const { id } = useLocalSearchParams<{ id: string }>();
+  const { addItem, getRanking } = useRankings();
+  const [name, setName] = useState('');
+  const [notes, setNotes] = useState('');
   const [loading, setLoading] = useState(false);
 
+  const rankingId = parseInt(id || '0');
+  const ranking = getRanking(rankingId);
+
   const handleSave = async () => {
-    if (!title.trim()) {
-      Alert.alert('Error', 'Please enter a title for your ranking');
+    if (!name.trim()) {
+      Alert.alert('Error', 'Please enter a name for this item');
+      return;
+    }
+
+    if (!ranking) {
+      Alert.alert('Error', 'Ranking not found');
       return;
     }
 
     setLoading(true);
     try {
-      const newRankingData: CreateRankingRequest = {
-        title: title.trim(),
-        description: description.trim() || undefined,
+      // Calculate the next rank position (last position + 1)
+      const nextRank = (ranking.item?.length || 0) + 1;
+      
+      const newItemData: CreateItemRequest = {
+        name: name.trim(),
+        notes: notes.trim() || undefined,
+        rank: nextRank,
+        ranking_id: rankingId
       };
 
-      // Create ranking using Supabase
-      await createRanking(newRankingData);
+      // Create item using Supabase
+      await addItem(rankingId, newItemData);
       
       // Navigate back to previous screen
       router.back();
     } catch (error: any) {
-      Alert.alert('Error', error.message || 'Failed to create ranking');
+      Alert.alert('Error', error.message || 'Failed to create item');
     } finally {
       setLoading(false);
     }
   };
 
   const handleCancel = () => {
-    if (title.trim() || description.trim()) {
+    if (name.trim() || notes.trim()) {
       Alert.alert(
         'Discard Changes',
         'Are you sure you want to discard your changes?',
@@ -60,7 +74,7 @@ export default function AddRankingScreen() {
         <TouchableOpacity onPress={handleCancel} style={styles.cancelButton}>
           <Text style={styles.cancelText}>Cancel</Text>
         </TouchableOpacity>
-        <Text style={styles.headerTitle}>New Ranking</Text>
+        <Text style={styles.headerTitle}>New Item</Text>
         <TouchableOpacity 
           onPress={handleSave} 
           style={[styles.saveButton, loading && styles.saveButtonDisabled]}
@@ -72,24 +86,24 @@ export default function AddRankingScreen() {
 
       <View style={styles.content}>
         <View style={styles.inputGroup}>
-          <Text style={styles.label}>Title *</Text>
+          <Text style={styles.label}>Name *</Text>
           <TextInput
             style={styles.input}
-            value={title}
-            onChangeText={setTitle}
-            placeholder="e.g., My Favorite Movies"
+            value={name}
+            onChangeText={setName}
+            placeholder="e.g., The Godfather"
             placeholderTextColor="#666"
             maxLength={255}
           />
         </View>
 
         <View style={styles.inputGroup}>
-          <Text style={styles.label}>Description</Text>
+          <Text style={styles.label}>Notes</Text>
           <TextInput
             style={[styles.input, styles.textArea]}
-            value={description}
-            onChangeText={setDescription}
-            placeholder="Add a description for your ranking..."
+            value={notes}
+            onChangeText={setNotes}
+            placeholder="Add notes about this item..."
             placeholderTextColor="#666"
             multiline
             numberOfLines={4}

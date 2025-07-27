@@ -1,6 +1,6 @@
 import { Ionicons } from '@expo/vector-icons';
-import { useLocalSearchParams, useRouter } from 'expo-router';
-import { useEffect, useState } from 'react';
+import { useLocalSearchParams, useRouter, useFocusEffect } from 'expo-router';
+import React, { useEffect, useState } from 'react';
 import { Alert, FlatList, StyleSheet, Text, TouchableOpacity, View } from 'react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
 
@@ -11,9 +11,26 @@ import { RankingWithItems } from '@/types/rankings';
 export default function RankingDetailScreen() {
   const { id, rankingData } = useLocalSearchParams<{ id: string; rankingData?: string }>();
   const router = useRouter();
-  const { getRanking, loading } = useRankings();
+  const { getRanking, loading, rankings, refreshRankings } = useRankings();
   const [ranking, setRanking] = useState<RankingWithItems | null>(null);
   const [initialized, setInitialized] = useState(false);
+
+  // Refresh data whenever screen comes into focus
+  useFocusEffect(
+    React.useCallback(() => {
+      refreshRankings();
+    }, [refreshRankings])
+  );
+
+  // Update local ranking when rankings change (e.g., after adding an item)
+  useEffect(() => {
+    if (id && rankings.length > 0) {
+      const updatedRanking = getRanking(parseInt(id));
+      if (updatedRanking) {
+        setRanking(updatedRanking);
+      }
+    }
+  }, [rankings, id, getRanking]);
 
   useEffect(() => {
     if (initialized) return; // Prevent multiple runs
@@ -44,8 +61,7 @@ export default function RankingDetailScreen() {
   }, [id]); // Only depend on stable id
 
   const handleAddItem = () => {
-    // TODO: Navigate to add item screen
-    Alert.alert('Add Item', 'This will open the add item screen');
+    router.push(`/ranking/${id}/add-item`);
   };
 
   const handleReorder = (newItems: any[]) => {
