@@ -11,7 +11,7 @@ import { RankingWithItems } from '@/types/rankings';
 export default function RankingDetailScreen() {
   const { id, rankingData } = useLocalSearchParams<{ id: string; rankingData?: string }>();
   const router = useRouter();
-  const { getRanking, loading, rankings, refreshRankings } = useRankings();
+  const { getRanking, rankings, refreshRankings } = useRankings();
   const [ranking, setRanking] = useState<RankingWithItems | null>(null);
   const [initialized, setInitialized] = useState(false);
 
@@ -48,7 +48,7 @@ export default function RankingDetailScreen() {
     }
 
     // Fallback to useRankings if no data passed or parsing failed
-    if (id && !loading) {
+    if (id) {
       const foundRanking = getRanking(parseInt(id));
       if (foundRanking) {
         setRanking(foundRanking);
@@ -64,10 +64,6 @@ export default function RankingDetailScreen() {
     router.push(`/ranking/${id}/add-item`);
   };
 
-  const handleReorder = (newItems: any[]) => {
-    // TODO: Implement reordering logic
-    console.log('Reordering items:', newItems);
-  };
 
   // Don't render anything until we have ranking data
   if (!ranking) {

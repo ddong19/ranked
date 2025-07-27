@@ -10,7 +10,7 @@ import { RankingWithItems } from '@/types/rankings';
 
 export default function Index() {
   const router = useRouter();
-  const { rankings, loading, refreshRankings } = useRankings();
+  const { rankings, refreshRankings } = useRankings();
 
   // Refresh data whenever screen comes into focus
   useFocusEffect(
