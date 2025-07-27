@@ -70,10 +70,14 @@ export default function RankingDetailScreen() {
       </View>
 
       <View style={styles.content}>
-        <Text style={styles.sectionTitle}>{ranking.title}</Text>
-        <Text style={styles.sectionDescription}>
-          {ranking.description || ''}
+        <Text style={[styles.sectionTitle, !ranking.description && styles.sectionTitleNoDescription]}>
+          {ranking.title}
         </Text>
+        {ranking.description && (
+          <Text style={styles.sectionDescription}>
+            {ranking.description}
+          </Text>
+        )}
         
         <FlatList
           data={ranking.item || []}
@@ -94,9 +98,6 @@ export default function RankingDetailScreen() {
                 </View>
                 <View style={styles.itemContent}>
                   <Text style={styles.itemName}>{item.name}</Text>
-                  {item.notes && (
-                    <Text style={styles.itemNotes}>{item.notes}</Text>
-                  )}
                 </View>
               </View>
             );
@@ -158,6 +159,9 @@ const styles = StyleSheet.create({
     fontWeight: 'bold',
     marginBottom: 8,
   },
+  sectionTitleNoDescription: {
+    marginBottom: 16,
+  },
   sectionDescription: {
     color: '#999',
     fontSize: 14,
@@ -184,36 +188,31 @@ const styles = StyleSheet.create({
   goldText: {
     color: '#D4AF37',
     fontSize: 16,
-    fontWeight: 'bold',
+    fontWeight: '900',
   },
   silverText: {
     color: '#C0C0C0',
     fontSize: 16,
-    fontWeight: 'bold',
+    fontWeight: '900',
   },
   bronzeText: {
     color: '#CD7F32',
     fontSize: 16,
-    fontWeight: 'bold',
+    fontWeight: '900',
   },
   rankNumberText: {
-    color: '#fff',
+    color: '#606060',
     fontSize: 16,
-    fontWeight: 'bold',
+    fontWeight: '900',
   },
   itemContent: {
     flex: 1,
   },
   itemName: {
     color: '#fff',
-    fontSize: 18,
+    fontSize: 16,
     fontWeight: '500',
     marginBottom: 1,
-  },
-  itemNotes: {
-    color: '#999',
-    fontSize: 14,
-    lineHeight: 18,
   },
   addButton: {
     flexDirection: 'row',

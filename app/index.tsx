@@ -44,11 +44,13 @@ export default function Index() {
       <View style={styles.cardContent}>
         <View style={styles.cardLeft}>
           <Text style={styles.cardTitle}>{item.title}</Text>
-          <Text style={styles.cardDescription}>
-            {item.description || ''}
-          </Text>
+          {item.description && (
+            <Text style={styles.cardDescription}>
+              {item.description}
+            </Text>
+          )}
           <Text style={styles.itemCount}>
-            {item.item?.length || 0} items
+            {item.item?.length || 0} {(item.item?.length || 0) === 1 ? 'Item' : 'Items'}
           </Text>
         </View>
         <View style={styles.cardRight}>
