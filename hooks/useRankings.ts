@@ -151,6 +151,25 @@ export function useRankings() {
     }
   };
 
+  const deleteItem = async (itemId: number) => {
+    try {
+      const { error: supabaseError } = await supabase
+        .from('item')
+        .delete()
+        .eq('id', itemId);
+
+      if (supabaseError) {
+        throw supabaseError;
+      }
+
+      // Refresh rankings to get updated data (with re-ordered ranks from trigger)
+      await loadRankings();
+    } catch (err: any) {
+      setError(err.message || 'Failed to delete item');
+      throw err;
+    }
+  };
+
   const updateItemRanks = async (rankingId: number, items: Item[]) => {
     try {
       // Update each item's rank in Supabase
@@ -199,6 +218,7 @@ export function useRankings() {
     updateRanking,
     deleteRanking,
     addItem,
+    deleteItem,
     updateItemRanks,
     getRanking,
     refreshRankings: loadRankings,

@@ -5,13 +5,14 @@ import { Alert, FlatList, StyleSheet, Text, TouchableOpacity, View } from 'react
 import { SafeAreaView } from 'react-native-safe-area-context';
 
 import AppHeader from '@/components/AppHeader';
+import SwipeableItem from '@/components/SwipeableItem';
 import { useRankings } from '@/hooks/useRankings';
 import { RankingWithItems } from '@/types/rankings';
 
 export default function RankingDetailScreen() {
   const { id, rankingData } = useLocalSearchParams<{ id: string; rankingData?: string }>();
   const router = useRouter();
-  const { getRanking, rankings, refreshRankings } = useRankings();
+  const { getRanking, rankings, refreshRankings, deleteItem } = useRankings();
   const [ranking, setRanking] = useState<RankingWithItems | null>(null);
   const [initialized, setInitialized] = useState(false);
 
@@ -64,6 +65,15 @@ export default function RankingDetailScreen() {
     router.push(`/ranking/${id}/add-item`);
   };
 
+  const handleDeleteItem = async (itemId: number) => {
+    try {
+      await deleteItem(itemId);
+    } catch (error) {
+      console.error('Failed to delete item:', error);
+      Alert.alert('Error', 'Failed to delete item. Please try again.');
+    }
+  };
+
 
   // Don't render anything until we have ranking data
   if (!ranking) {
@@ -95,16 +105,18 @@ export default function RankingDetailScreen() {
             };
 
             return (
-              <View style={styles.itemCard}>
-                <View style={styles.rankNumber}>
-                  <Text style={getRankTextStyle()}>
-                    {item.rank}
-                  </Text>
+              <SwipeableItem onDelete={() => handleDeleteItem(item.id)}>
+                <View style={styles.itemCard}>
+                  <View style={styles.rankNumber}>
+                    <Text style={getRankTextStyle()}>
+                      {item.rank}
+                    </Text>
+                  </View>
+                  <View style={styles.itemContent}>
+                    <Text style={styles.itemName}>{item.name}</Text>
+                  </View>
                 </View>
-                <View style={styles.itemContent}>
-                  <Text style={styles.itemName}>{item.name}</Text>
-                </View>
-              </View>
+              </SwipeableItem>
             );
           }}
           keyExtractor={(item) => item.id.toString()}
@@ -166,7 +178,6 @@ const styles = StyleSheet.create({
     backgroundColor: '#2a2a2a',
     borderRadius: 12,
     padding: 16,
-    marginBottom: 12,
   },
   rankNumber: {
     width: 16,
