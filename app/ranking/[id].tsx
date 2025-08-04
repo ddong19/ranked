@@ -1,11 +1,11 @@
 import { Ionicons } from '@expo/vector-icons';
 import { useLocalSearchParams, useRouter, useFocusEffect } from 'expo-router';
 import React, { useEffect, useState } from 'react';
-import { Alert, FlatList, StyleSheet, Text, TouchableOpacity, TouchableWithoutFeedback, View } from 'react-native';
+import { Alert, FlatList, StyleSheet, Text, TouchableOpacity, View } from 'react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
 
 import AppHeader from '@/components/AppHeader';
-import SwipeableItem, { closeAllSwipeables } from '@/components/SwipeableItem';
+import SwipeableItem from '@/components/SwipeableItem';
 import { useRankings } from '@/hooks/useRankings';
 import { RankingWithItems } from '@/types/rankings';
 
@@ -62,7 +62,6 @@ export default function RankingDetailScreen() {
   }, [id]); // Only depend on stable id
 
   const handleAddItem = () => {
-    closeAllSwipeables();
     router.push(`/ranking/${id}/add-item`);
   };
 
@@ -85,63 +84,61 @@ export default function RankingDetailScreen() {
     <SafeAreaView style={styles.container}>
       <AppHeader />
 
-      <TouchableWithoutFeedback onPress={closeAllSwipeables}>
-        <View style={styles.content}>
-          <Text style={[styles.sectionTitle, !ranking.description && styles.sectionTitleNoDescription]}>
-            {ranking.title}
+      <View style={styles.content}>
+        <Text style={[styles.sectionTitle, !ranking.description && styles.sectionTitleNoDescription]}>
+          {ranking.title}
+        </Text>
+        {ranking.description && (
+          <Text style={styles.sectionDescription}>
+            {ranking.description}
           </Text>
-          {ranking.description && (
-            <Text style={styles.sectionDescription}>
-              {ranking.description}
-            </Text>
-          )}
-          
-          <FlatList
-            data={ranking.item || []}
-            renderItem={({ item }) => {
-              const getRankTextStyle = () => {
-                if (item.rank === 1) return styles.goldText;
-                if (item.rank === 2) return styles.silverText;
-                if (item.rank === 3) return styles.bronzeText;
-                return styles.rankNumberText;
-              };
+        )}
+        
+        <FlatList
+          data={ranking.item || []}
+          renderItem={({ item }) => {
+            const getRankTextStyle = () => {
+              if (item.rank === 1) return styles.goldText;
+              if (item.rank === 2) return styles.silverText;
+              if (item.rank === 3) return styles.bronzeText;
+              return styles.rankNumberText;
+            };
 
-              return (
-                <SwipeableItem onDelete={() => handleDeleteItem(item.id)}>
-                  <View style={styles.itemCard}>
-                    <View style={styles.rankNumber}>
-                      <Text style={getRankTextStyle()}>
-                        {item.rank}
-                      </Text>
-                    </View>
-                    <View style={styles.itemContent}>
-                      <Text style={styles.itemName}>{item.name}</Text>
-                    </View>
+            return (
+              <SwipeableItem onDelete={() => handleDeleteItem(item.id)}>
+                <View style={styles.itemCard}>
+                  <View style={styles.rankNumber}>
+                    <Text style={getRankTextStyle()}>
+                      {item.rank}
+                    </Text>
                   </View>
-                </SwipeableItem>
-              );
-            }}
-            keyExtractor={(item) => item.id.toString()}
-            contentContainerStyle={styles.listContainer}
-            showsVerticalScrollIndicator={false}
-            ListEmptyComponent={
-              <View style={styles.emptyContainer}>
-                <Text style={styles.emptyText}>No items yet</Text>
-                <Text style={styles.emptySubtext}>Tap "Add Item" to start ranking</Text>
-              </View>
-            }
-          />
+                  <View style={styles.itemContent}>
+                    <Text style={styles.itemName}>{item.name}</Text>
+                  </View>
+                </View>
+              </SwipeableItem>
+            );
+          }}
+          keyExtractor={(item) => item.id.toString()}
+          contentContainerStyle={styles.listContainer}
+          showsVerticalScrollIndicator={false}
+          ListEmptyComponent={
+            <View style={styles.emptyContainer}>
+              <Text style={styles.emptyText}>No items yet</Text>
+              <Text style={styles.emptySubtext}>Tap "Add Item" to start ranking</Text>
+            </View>
+          }
+        />
 
-          <TouchableOpacity 
-            style={styles.addButton}
-            onPress={handleAddItem}
-            activeOpacity={0.8}
-          >
-            <Ionicons name="add" size={24} color="#666" />
-            <Text style={styles.addButtonText}>ADD ITEM</Text>
-          </TouchableOpacity>
-        </View>
-      </TouchableWithoutFeedback>
+        <TouchableOpacity 
+          style={styles.addButton}
+          onPress={handleAddItem}
+          activeOpacity={0.8}
+        >
+          <Ionicons name="add" size={24} color="#666" />
+          <Text style={styles.addButtonText}>ADD ITEM</Text>
+        </TouchableOpacity>
+      </View>
     </SafeAreaView>
   );
 }
