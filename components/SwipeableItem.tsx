@@ -1,5 +1,5 @@
 import { Ionicons } from '@expo/vector-icons';
-import React from 'react';
+import React, { useEffect } from 'react';
 import {
   StyleSheet,
   TouchableOpacity,
@@ -8,13 +8,21 @@ import {
 import { Gesture, GestureDetector } from 'react-native-gesture-handler';
 import Animated, {
   interpolate,
+  runOnJS,
   useAnimatedStyle,
   useSharedValue,
-  withSpring
+  withTiming
 } from 'react-native-reanimated';
 
-const SWIPE_THRESHOLD = -75;
+const OPEN_THRESHOLD = -30;
 const DELETE_BUTTON_WIDTH = 80;
+
+// Global registry for close functions
+const swipeableItems: (() => void)[] = [];
+
+export const closeAllSwipeables = () => {
+  swipeableItems.forEach(closeFn => closeFn());
+};
 
 interface SwipeableItemProps {
   children: React.ReactNode;
@@ -25,29 +33,54 @@ export default function SwipeableItem({ children, onDelete }: SwipeableItemProps
   const translateX = useSharedValue(0);
   const startX = useSharedValue(0);
 
+  const closeItem = () => {
+    translateX.value = withTiming(0, { duration: 200 });
+  };
+
+  const openItem = () => {
+    // Close all other items first
+    closeAllSwipeables();
+    translateX.value = withTiming(-DELETE_BUTTON_WIDTH, { duration: 200 });
+  };
+
+  // Register this item's close function
+  useEffect(() => {
+    swipeableItems.push(closeItem);
+    return () => {
+      const index = swipeableItems.indexOf(closeItem);
+      if (index > -1) {
+        swipeableItems.splice(index, 1);
+      }
+    };
+  }, []);
+
   const panGesture = Gesture.Pan()
     .onStart(() => {
       startX.value = translateX.value;
     })
     .onUpdate((event) => {
-      // Combine the starting position with the current translation for proper tracking
+      // More responsive following during drag
       const newTranslateX = startX.value + event.translationX;
-      // Only allow left swipe (negative values) and clamp to button width
       translateX.value = Math.max(-DELETE_BUTTON_WIDTH, Math.min(0, newTranslateX));
     })
     .onEnd(() => {
-      const shouldReveal = translateX.value < SWIPE_THRESHOLD;
+      const wasOpen = startX.value < -10; // Item was already open when drag started
       
-      if (shouldReveal) {
-        translateX.value = withSpring(-DELETE_BUTTON_WIDTH, {
-          damping: 25,
-          stiffness: 250,
-        });
+      if (wasOpen) {
+        // If it was open (-80), close if swiped right past -50 (30px from open position)
+        const closePoint = -DELETE_BUTTON_WIDTH + OPEN_THRESHOLD; // -80 + 30 = -50
+        if (translateX.value > closePoint) {
+          runOnJS(closeItem)();
+        } else {
+          runOnJS(openItem)();
+        }
       } else {
-        translateX.value = withSpring(0, {
-          damping: 25,
-          stiffness: 250,
-        });
+        // If it was closed, open if swiped left past -30
+        if (translateX.value < OPEN_THRESHOLD) {
+          runOnJS(openItem)();
+        } else {
+          runOnJS(closeItem)();
+        }
       }
     });
 
@@ -79,11 +112,7 @@ export default function SwipeableItem({ children, onDelete }: SwipeableItemProps
   });
 
   const handleDelete = () => {
-    // Reset position first
-    translateX.value = withSpring(0, {
-      damping: 20,
-      stiffness: 300,
-    });
+    closeItem();
     onDelete();
   };
 
