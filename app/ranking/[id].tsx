@@ -5,7 +5,7 @@ import { Alert, FlatList, StyleSheet, Text, TouchableOpacity, View } from 'react
 import { SafeAreaView } from 'react-native-safe-area-context';
 
 import AppHeader from '@/components/AppHeader';
-import SwipeableItem from '@/components/SwipeableItem';
+import SwipeableItem, { closeAllSwipeables } from '@/components/SwipeableItem';
 import { useRankings } from '@/hooks/useRankings';
 import { RankingWithItems } from '@/types/rankings';
 
@@ -62,6 +62,7 @@ export default function RankingDetailScreen() {
   }, [id]); // Only depend on stable id
 
   const handleAddItem = () => {
+    closeAllSwipeables();
     router.push(`/ranking/${id}/add-item`);
   };
 
@@ -84,18 +85,19 @@ export default function RankingDetailScreen() {
     <SafeAreaView style={styles.container}>
       <AppHeader />
 
-      <View style={styles.content}>
-        <Text style={[styles.sectionTitle, !ranking.description && styles.sectionTitleNoDescription]}>
-          {ranking.title}
-        </Text>
-        {ranking.description && (
-          <Text style={styles.sectionDescription}>
-            {ranking.description}
+        <View style={styles.content}>
+          <Text style={[styles.sectionTitle, !ranking.description && styles.sectionTitleNoDescription]}>
+            {ranking.title}
           </Text>
-        )}
+          {ranking.description && (
+            <Text style={styles.sectionDescription}>
+              {ranking.description}
+            </Text>
+          )}
         
         <FlatList
           data={ranking.item || []}
+          onScrollBeginDrag={closeAllSwipeables}
           renderItem={({ item }) => {
             const getRankTextStyle = () => {
               if (item.rank === 1) return styles.goldText;
