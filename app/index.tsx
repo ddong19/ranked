@@ -1,16 +1,17 @@
 import { Ionicons } from '@expo/vector-icons';
 import { useRouter, useFocusEffect } from 'expo-router';
 import React from 'react';
-import { FlatList, StyleSheet, Text, TouchableOpacity, View } from 'react-native';
+import { Alert, FlatList, StyleSheet, Text, TouchableOpacity, View } from 'react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
 
 import AppHeader from '@/components/AppHeader';
+import SwipeableItem, { closeAllSwipeables } from '@/components/SwipeableItem';
 import { useRankings } from '@/hooks/useRankings';
 import { RankingWithItems } from '@/types/rankings';
 
 export default function Index() {
   const router = useRouter();
-  const { rankings, refreshRankings } = useRankings();
+  const { rankings, refreshRankings, deleteRanking } = useRankings();
 
   // Refresh data whenever screen comes into focus
   useFocusEffect(
@@ -30,32 +31,45 @@ export default function Index() {
   };
 
   const handleAddRanking = () => {
+    closeAllSwipeables();
     router.push('/add-ranking');
   };
 
+  const handleDeleteRanking = async (rankingId: number) => {
+    try {
+      await deleteRanking(rankingId);
+    } catch (error) {
+      console.error('Failed to delete ranking:', error);
+      Alert.alert('Error', 'Failed to delete ranking. Please try again.');
+    }
+  };
+
   const renderRankingCard = ({ item }: { item: RankingWithItems }) => (
-    <TouchableOpacity 
-      style={styles.rankingCard}
-      onPress={() => handleRankingPress(item)}
-      activeOpacity={0.7}
-    >
-      <View style={styles.cardContent}>
-        <View style={styles.cardLeft}>
-          <Text style={styles.cardTitle}>{item.title}</Text>
-          {item.description && (
-            <Text style={styles.cardDescription}>
-              {item.description}
-            </Text>
-          )}
-          <Text style={styles.itemCount}>
-            {item.item?.length || 0} {(item.item?.length || 0) === 1 ? 'Item' : 'Items'}
-          </Text>
+    <View style={styles.cardWrapper}>
+      <SwipeableItem 
+        onDelete={() => handleDeleteRanking(item.id)}
+        onPress={() => handleRankingPress(item)}
+      >
+        <View style={styles.rankingCard}>
+          <View style={styles.cardContent}>
+            <View style={styles.cardLeft}>
+              <Text style={styles.cardTitle}>{item.title}</Text>
+              {item.description && (
+                <Text style={styles.cardDescription}>
+                  {item.description}
+                </Text>
+              )}
+              <Text style={styles.itemCount}>
+                {item.item?.length || 0} {(item.item?.length || 0) === 1 ? 'Item' : 'Items'}
+              </Text>
+            </View>
+            <View style={styles.cardRight}>
+              <Ionicons name="chevron-forward" size={20} color="#666" />
+            </View>
+          </View>
         </View>
-        <View style={styles.cardRight}>
-          <Ionicons name="chevron-forward" size={20} color="#666" />
-        </View>
-      </View>
-    </TouchableOpacity>
+      </SwipeableItem>
+    </View>
   );
 
 
@@ -72,6 +86,7 @@ export default function Index() {
           keyExtractor={(item) => item.id.toString()}
           contentContainerStyle={styles.listContainer}
           showsVerticalScrollIndicator={false}
+          onScrollBeginDrag={closeAllSwipeables}
         />
 
         <TouchableOpacity 
@@ -105,10 +120,12 @@ const styles = StyleSheet.create({
   listContainer: {
     paddingBottom: 100, // Space for add button
   },
+  cardWrapper: {
+    marginBottom: 4, // 4 + 12 from SwipeableItem = 16 total
+  },
   rankingCard: {
     backgroundColor: '#2a2a2a',
     borderRadius: 12,
-    marginBottom: 16,
     overflow: 'hidden',
   },
   cardContent: {

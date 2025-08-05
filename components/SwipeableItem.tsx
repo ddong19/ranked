@@ -1,6 +1,7 @@
 import { Ionicons } from '@expo/vector-icons';
 import React, { useEffect, useRef } from 'react';
 import {
+  Pressable,
   StyleSheet,
   TouchableOpacity,
   View,
@@ -30,9 +31,10 @@ const closeOthersImmediately = (currentRef: React.RefObject<any>) => {
 interface SwipeableItemProps {
   children: React.ReactNode;
   onDelete: () => void;
+  onPress?: () => void;
 }
 
-export default function SwipeableItem({ children, onDelete }: SwipeableItemProps) {
+export default function SwipeableItem({ children, onDelete, onPress }: SwipeableItemProps) {
   const swipeableRef = useRef<any>(null);
 
   // Register this swipeable ref globally
@@ -70,6 +72,12 @@ export default function SwipeableItem({ children, onDelete }: SwipeableItemProps
     );
   };
 
+  const childContent = onPress ? (
+    <Pressable onPress={onPress} style={{ flex: 1 }}>
+      {children}
+    </Pressable>
+  ) : children;
+
   return (
     <View style={styles.container}>
       <ReanimatedSwipeable 
@@ -79,9 +87,9 @@ export default function SwipeableItem({ children, onDelete }: SwipeableItemProps
         onSwipeableOpen={handleSwipeableOpen}
         friction={2}
         enableTrackpadTwoFingerGesture
-        rightThreshold={15}
+        rightThreshold={5}
       >
-        {children}
+        {childContent}
       </ReanimatedSwipeable>
     </View>
   );
