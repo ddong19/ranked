@@ -1,5 +1,5 @@
 import { Ionicons } from '@expo/vector-icons';
-import { useRouter, useFocusEffect } from 'expo-router';
+import { useFocusEffect, useRouter } from 'expo-router';
 import React from 'react';
 import { Alert, FlatList, StyleSheet, Text, TouchableOpacity, View } from 'react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
@@ -35,7 +35,33 @@ export default function Index() {
     router.push('/add-ranking');
   };
 
-  const handleDeleteRanking = async (rankingId: number) => {
+  const handleDeleteRanking = (rankingId: number) => {
+    const ranking = rankings.find(r => r.id === rankingId);
+    if (!ranking) return;
+
+    const itemCount = ranking.item?.length || 0;
+    const itemText = itemCount === 1 ? 'Item' : 'Items';
+    
+    Alert.alert(
+      'Delete Ranking',
+      `Are you sure you want to delete "${ranking.title}" and its ${itemCount} ${itemText.toLowerCase()}?`,
+      [
+        {
+          text: 'Cancel',
+          style: 'cancel',
+          onPress: () => closeAllSwipeables(),
+        },
+        {
+          text: 'Delete',
+          style: 'destructive',
+          onPress: () => confirmDeleteRanking(rankingId),
+        },
+      ],
+      { cancelable: true }
+    );
+  };
+
+  const confirmDeleteRanking = async (rankingId: number) => {
     try {
       await deleteRanking(rankingId);
     } catch (error) {
