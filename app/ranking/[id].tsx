@@ -1,7 +1,8 @@
 import { Ionicons } from '@expo/vector-icons';
-import { useLocalSearchParams, useRouter, useFocusEffect } from 'expo-router';
+import { useFocusEffect, useLocalSearchParams, useRouter } from 'expo-router';
 import React, { useEffect, useState } from 'react';
-import { Alert, FlatList, StyleSheet, Text, TouchableOpacity, View } from 'react-native';
+import { Alert, StyleSheet, Text, TouchableOpacity, View } from 'react-native';
+import DraggableFlatList from 'react-native-draggable-flatlist';
 import { SafeAreaView } from 'react-native-safe-area-context';
 
 import AppHeader from '@/components/AppHeader';
@@ -75,6 +76,20 @@ export default function RankingDetailScreen() {
     }
   };
 
+  const handleDragEnd = async (reorderedData: any[]) => {
+    if (!ranking) return;
+    
+    // Close any open swipeables
+    closeAllSwipeables();
+    
+    try {
+      // Update ranks in database using existing function
+      await updateItemRanks(ranking.id, reorderedData);
+    } catch (error) {
+      console.error('Failed to update item ranks:', error);
+      Alert.alert('Error', 'Failed to update item order. Please try again.');
+    }
+  };
 
   // Don't render anything until we have ranking data
   if (!ranking) {
@@ -95,51 +110,65 @@ export default function RankingDetailScreen() {
             </Text>
           )}
         
-        <FlatList
-          data={ranking.item || []}
-          onScrollBeginDrag={closeAllSwipeables}
-          renderItem={({ item }) => {
-            const getRankTextStyle = () => {
-              if (item.rank === 1) return styles.goldText;
-              if (item.rank === 2) return styles.silverText;
-              if (item.rank === 3) return styles.bronzeText;
-              return styles.rankNumberText;
-            };
+        <View style={styles.listWrapper}>
+          <DraggableFlatList
+            data={ranking.item || []}
+            onDragEnd={({ data }) => handleDragEnd(data)}
+            keyExtractor={(item) => item.id.toString()}
+            renderItem={({ item, drag, isActive }) => {
+              const getRankTextStyle = () => {
+                const baseStyle = item.rank === 1 ? styles.goldText :
+                                item.rank === 2 ? styles.silverText :
+                                item.rank === 3 ? styles.bronzeText :
+                                styles.rankNumberText;
+                
+                // Dynamic font size based on digit count
+                const digitCount = item.rank.toString().length;
+                let fontSize = 16; // Default for single digits
+                if (digitCount === 2) fontSize = 13; // Smaller for double digits
+                if (digitCount >= 3) fontSize = 10; // Smallest for triple+ digits
+                
+                return { ...baseStyle, fontSize };
+              };
 
-            return (
-              <SwipeableItem onDelete={() => handleDeleteItem(item.id)}>
-                <View style={styles.itemCard}>
-                  <View style={styles.rankNumber}>
-                    <Text style={getRankTextStyle()}>
-                      {item.rank}
-                    </Text>
-                  </View>
-                  <View style={styles.itemContent}>
-                    <Text style={styles.itemName}>{item.name}</Text>
-                  </View>
-                </View>
-              </SwipeableItem>
-            );
-          }}
-          keyExtractor={(item) => item.id.toString()}
-          contentContainerStyle={styles.listContainer}
-          showsVerticalScrollIndicator={false}
-          ListEmptyComponent={
-            <View style={styles.emptyContainer}>
-              <Text style={styles.emptyText}>No items yet</Text>
-              <Text style={styles.emptySubtext}>Tap "Add Item" to start ranking</Text>
-            </View>
-          }
-        />
+              return (
+                <SwipeableItem onDelete={() => handleDeleteItem(item.id)}>
+                  <TouchableOpacity onLongPress={drag} activeOpacity={1} style={{ flex: 1 }}>
+                    <View style={[styles.itemCard, isActive && styles.draggedItem]}>
+                      <View style={styles.rankNumber}>
+                        <Text style={getRankTextStyle()}>
+                          {item.rank}
+                        </Text>
+                      </View>
+                      <View style={styles.itemContent}>
+                        <Text style={styles.itemName}>{item.name}</Text>
+                      </View>
+                    </View>
+                  </TouchableOpacity>
+                </SwipeableItem>
+              );
+            }}
+            contentContainerStyle={styles.listContainer}
+            showsVerticalScrollIndicator={false}
+            ListEmptyComponent={
+              <View style={styles.emptyContainer}>
+                <Text style={styles.emptyText}>No items yet</Text>
+                <Text style={styles.emptySubtext}>Tap "Add Item" to start ranking</Text>
+              </View>
+            }
+          />
+        </View>
 
-        <TouchableOpacity 
-          style={styles.addButton}
-          onPress={handleAddItem}
-          activeOpacity={0.8}
-        >
-          <Ionicons name="add" size={24} color="#666" />
-          <Text style={styles.addButtonText}>ADD ITEM</Text>
-        </TouchableOpacity>
+        <View style={styles.buttonContainer}>
+          <TouchableOpacity 
+            style={styles.addButton}
+            onPress={handleAddItem}
+            activeOpacity={0.8}
+          >
+            <Ionicons name="add" size={24} color="#666" />
+            <Text style={styles.addButtonText}>ADD ITEM</Text>
+          </TouchableOpacity>
+        </View>
       </View>
     </SafeAreaView>
   );
@@ -171,8 +200,12 @@ const styles = StyleSheet.create({
     lineHeight: 20,
     marginLeft: 10
   },
+  listWrapper: {
+    flex: 1,
+  },
   listContainer: {
-    paddingBottom: 100,
+    paddingBottom: 20,
+    minHeight: '100%',
   },
   itemCard: {
     flexDirection: 'row',
@@ -181,9 +214,21 @@ const styles = StyleSheet.create({
     borderRadius: 12,
     padding: 16,
   },
+  draggedItem: {
+    transform: [{ scale: 0.95 }],
+    shadowColor: '#000',
+    shadowOffset: {
+      width: 0,
+      height: 4,
+    },
+    shadowOpacity: 0.3,
+    shadowRadius: 8,
+    elevation: 8,
+    opacity: 0.9,
+  },
   rankNumber: {
-    width: 16,
-    alignItems: 'center',
+    width: 22.4,
+    alignItems: 'flex-start',
     justifyContent: 'center',
     marginRight: 12,
   },
@@ -216,12 +261,16 @@ const styles = StyleSheet.create({
     fontWeight: '500',
     marginBottom: 1,
   },
+  buttonContainer: {
+    backgroundColor: '#151718',
+    paddingHorizontal: 16,
+    paddingVertical: 20,
+  },
   addButton: {
     flexDirection: 'row',
     alignItems: 'center',
     justifyContent: 'center',
     paddingVertical: 16,
-    marginTop: 20,
   },
   addButtonText: {
     color: '#666',
