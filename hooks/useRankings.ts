@@ -172,20 +172,20 @@ export function useRankings() {
 
   const updateItemRanks = async (rankingId: number, items: Item[]) => {
     try {
-      // Update each item's rank in Supabase
-      const updates = items.map((item, index) => 
-        supabase
-          .from('item')
-          .update({ rank: index + 1 })
-          .eq('id', item.id)
-      );
+      // Create item-rank mapping for RPC function
+      const itemRanks: Record<string, number> = {};
+      items.forEach((item, index) => {
+        itemRanks[item.id.toString()] = index + 1;
+      });
 
-      const results = await Promise.all(updates);
-      
-      // Check for errors
-      const errors = results.filter(result => result.error);
-      if (errors.length > 0) {
-        throw new Error('Failed to update some item ranks');
+      // Call Supabase RPC function for atomic update
+      const { error: rpcError } = await supabase.rpc('update_item_ranks', {
+        p_ranking_id: rankingId,
+        p_item_ranks: itemRanks
+      });
+
+      if (rpcError) {
+        throw rpcError;
       }
 
       // Update local state with new ranks

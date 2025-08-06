@@ -13,7 +13,7 @@ import { RankingWithItems } from '@/types/rankings';
 export default function RankingDetailScreen() {
   const { id, rankingData } = useLocalSearchParams<{ id: string; rankingData?: string }>();
   const router = useRouter();
-  const { getRanking, rankings, refreshRankings, deleteItem } = useRankings();
+  const { getRanking, rankings, refreshRankings, deleteItem, updateItemRanks } = useRankings();
   const [ranking, setRanking] = useState<RankingWithItems | null>(null);
   const [initialized, setInitialized] = useState(false);
 
