@@ -122,20 +122,34 @@ export default function RankingDetailScreen() {
                                 item.rank === 3 ? styles.bronzeText :
                                 styles.rankNumberText;
                 
-                // Dynamic font size based on digit count
+                // Dynamic font size and weight based on digit count
                 const digitCount = item.rank.toString().length;
                 let fontSize = 16; // Default for single digits
-                if (digitCount === 2) fontSize = 13; // Smaller for double digits
-                if (digitCount >= 3) fontSize = 10; // Smallest for triple+ digits
+                let fontWeight: any = 900; // Default weight for single digits
                 
-                return { ...baseStyle, fontSize };
+                if (digitCount === 2) {
+                  fontSize = 13; // Smaller for double digits
+                  fontWeight = 900; // Same weight for double digits
+                }
+                if (digitCount >= 3) {
+                  fontSize = 10; // Smallest for triple+ digits
+                  fontWeight = 800; // Thinner for triple+ digits
+                }
+                
+                return { ...baseStyle, fontSize, fontWeight };
+              };
+
+              const digitCount = item.rank.toString().length;
+              const rankNumberStyle = {
+                ...styles.rankNumber,
+                alignItems: digitCount >= 3 ? 'flex-start' : 'center'
               };
 
               return (
                 <SwipeableItem onDelete={() => handleDeleteItem(item.id)}>
                   <TouchableOpacity onLongPress={drag} activeOpacity={1} style={{ flex: 1 }}>
                     <View style={[styles.itemCard, isActive && styles.draggedItem]}>
-                      <View style={styles.rankNumber}>
+                      <View style={rankNumberStyle}>
                         <Text style={getRankTextStyle()}>
                           {item.rank}
                         </Text>
@@ -227,7 +241,7 @@ const styles = StyleSheet.create({
     opacity: 0.9,
   },
   rankNumber: {
-    width: 22.4,
+    width: 22.2,
     alignItems: 'flex-start',
     justifyContent: 'center',
     marginRight: 12,
