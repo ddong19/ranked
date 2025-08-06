@@ -34,7 +34,7 @@ export function useRankings() {
     try {
       setError(null);
       
-      // Load rankings from SQLite
+      // Load rankings from local database
       const rankingsWithItems = await RankingService.loadRankings();
       setRankings(rankingsWithItems);
     } catch (err: any) {
@@ -45,7 +45,7 @@ export function useRankings() {
 
   const createRanking = async (data: CreateRankingRequest): Promise<RankingWithItems> => {
     try {
-      // Create ranking in SQLite
+      // Create ranking in local database
       const newRanking = await RankingService.createRanking(data);
       setRankings(prev => [...prev, newRanking]);
       
@@ -58,7 +58,7 @@ export function useRankings() {
 
   const updateRanking = async (id: number, updates: Partial<RankingWithItems>) => {
     try {
-      // Update ranking in SQLite
+      // Update ranking in local database
       await RankingService.updateRanking(id, updates);
       
       setRankings(prev => prev.map(ranking =>
@@ -72,7 +72,7 @@ export function useRankings() {
 
   const deleteRanking = async (id: number) => {
     try {
-      // Delete ranking from SQLite
+      // Delete ranking from local database
       await RankingService.deleteRanking(id);
       
       setRankings(prev => prev.filter(ranking => ranking.id !== id));
@@ -84,7 +84,7 @@ export function useRankings() {
 
   const addItem = async (rankingId: number, data: CreateItemRequest): Promise<Item> => {
     try {
-      // Add item to SQLite
+      // Add item to local database
       const newItem = await RankingService.addItem(rankingId, data);
 
       // Update local state
@@ -107,7 +107,7 @@ export function useRankings() {
 
   const deleteItem = async (itemId: number) => {
     try {
-      // Delete item from SQLite
+      // Delete item from local database
       await RankingService.deleteItem(itemId);
 
       // Refresh rankings to get updated data (with re-ordered ranks from trigger)
@@ -126,7 +126,7 @@ export function useRankings() {
         itemRanks[item.id.toString()] = index + 1;
       });
 
-      // Update ranks in SQLite
+      // Update ranks in local database
       await RankingService.updateItemRanks(rankingId, itemRanks);
 
       // Update local state with new ranks

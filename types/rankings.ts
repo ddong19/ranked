@@ -1,6 +1,6 @@
-// TypeScript interfaces matching Supabase database schema
+// TypeScript interfaces for the rankings database schema
 
-// Supabase Database Type Definitions
+// Database Type Definitions
 export interface Database {
   public: {
     Tables: {
@@ -48,7 +48,7 @@ export interface Database {
   };
 }
 
-// Application Types (matching Supabase schema)
+// Application Types (matching database schema)
 export type Ranking = Database['public']['Tables']['ranking']['Row'];
 export type RankingInsert = Database['public']['Tables']['ranking']['Insert'];
 export type RankingUpdate = Database['public']['Tables']['ranking']['Update'];

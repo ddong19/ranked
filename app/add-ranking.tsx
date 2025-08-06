@@ -31,7 +31,7 @@ export default function AddRankingScreen() {
         description: description.trim() || undefined,
       };
 
-      // Create ranking using SQLite
+      // Create ranking in local database
       await createRanking(newRankingData);
       
       // Navigate back to previous screen

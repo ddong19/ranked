@@ -48,7 +48,7 @@ export default function AddItemScreen() {
         ranking_id: rankingId
       };
 
-      // Create item using SQLite
+      // Create item in local database
       await addItem(rankingId, newItemData);
       
       // Navigate back to previous screen

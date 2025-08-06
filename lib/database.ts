@@ -21,11 +21,11 @@ export const initDatabase = async (): Promise<SQLite.SQLiteDatabase> => {
   return db;
 };
 
-// Create tables that match your exact Supabase schema
+// Create local SQLite tables for offline-first functionality
 const createTables = async () => {
   if (!db) throw new Error('Database not initialized');
 
-  // Create ranking table (matches your Supabase schema)
+  // Create rankings table
   await db.execAsync(`
     CREATE TABLE IF NOT EXISTS ranking (
       id INTEGER PRIMARY KEY AUTOINCREMENT,
@@ -34,7 +34,7 @@ const createTables = async () => {
     );
   `);
 
-  // Create item table (matches your Supabase schema)
+  // Create items table
   await db.execAsync(`
     CREATE TABLE IF NOT EXISTS item (
       id INTEGER PRIMARY KEY AUTOINCREMENT,
@@ -52,7 +52,7 @@ const createTables = async () => {
     CREATE INDEX IF NOT EXISTS idx_item_ranking_id ON item (ranking_id);
   `);
 
-  // Trigger to adjust ranks after delete (matches your Supabase trigger)
+  // Trigger to automatically adjust ranks when items are deleted
   await db.execAsync(`
     CREATE TRIGGER IF NOT EXISTS trigger_adjust_ranks_after_delete
     AFTER DELETE ON item

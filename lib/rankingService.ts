@@ -92,7 +92,7 @@ export class RankingService {
     await db.runAsync('DELETE FROM item WHERE id = ?', [itemId]);
   }
 
-  // Update item ranks (for drag and drop)
+  // Update item ranks atomically (for drag and drop reordering)
   static async updateItemRanks(rankingId: number, itemRanks: Record<string, number>): Promise<void> {
     const db = await getDatabase();
     
