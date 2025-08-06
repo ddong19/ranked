@@ -1,11 +1,11 @@
-import { useState, useEffect } from 'react';
-import { supabase } from '@/lib/supabase';
+import { useState, useEffect, useCallback } from 'react';
+import { RankingService } from '@/lib/rankingService';
+import { initDatabase } from '@/lib/database';
 import { 
   RankingWithItems, 
   Item, 
   CreateRankingRequest, 
-  CreateItemRequest,
-  RankingsState 
+  CreateItemRequest
 } from '@/types/rankings';
 
 export function useRankings() {
@@ -13,62 +13,43 @@ export function useRankings() {
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
 
-  // Load rankings from Supabase on mount
+  // Initialize database and load rankings on mount
   useEffect(() => {
-    loadRankings();
+    initializeAndLoad();
   }, []);
 
-  const loadRankings = async () => {
+  const initializeAndLoad = async () => {
     try {
       setLoading(true);
-      setError(null);
-      
-      const { data, error: supabaseError } = await supabase
-        .from('ranking')
-        .select(`
-          *,
-          item (*)
-        `)
-        .order('id');
-
-      if (supabaseError) {
-        throw supabaseError;
-      }
-
-      // Sort items by rank within each ranking
-      const rankingsWithSortedItems = data?.map(ranking => ({
-        ...ranking,
-        item: ranking.item.sort((a, b) => a.rank - b.rank)
-      })) || [];
-
-      setRankings(rankingsWithSortedItems);
+      await initDatabase();
+      await loadRankings();
     } catch (err: any) {
-      setError(err.message || 'Failed to load rankings');
-      console.error('Error loading rankings:', err);
+      setError(err.message || 'Failed to initialize database');
     } finally {
       setLoading(false);
     }
   };
 
+  const loadRankings = useCallback(async () => {
+    try {
+      setError(null);
+      
+      // Load rankings from SQLite
+      const rankingsWithItems = await RankingService.loadRankings();
+      setRankings(rankingsWithItems);
+    } catch (err: any) {
+      setError(err.message || 'Failed to load rankings');
+      console.error('Error loading rankings:', err);
+    }
+  }, []);
+
   const createRanking = async (data: CreateRankingRequest): Promise<RankingWithItems> => {
     try {
-      const { data: newRanking, error: supabaseError } = await supabase
-        .from('ranking')
-        .insert([{
-          title: data.title,
-          description: data.description
-        }])
-        .select()
-        .single();
-
-      if (supabaseError) {
-        throw supabaseError;
-      }
-
-      const rankingWithItems = { ...newRanking, item: [] };
-      setRankings(prev => [...prev, rankingWithItems]);
+      // Create ranking in SQLite
+      const newRanking = await RankingService.createRanking(data);
+      setRankings(prev => [...prev, newRanking]);
       
-      return rankingWithItems;
+      return newRanking;
     } catch (err: any) {
       setError(err.message || 'Failed to create ranking');
       throw err;
@@ -77,18 +58,9 @@ export function useRankings() {
 
   const updateRanking = async (id: number, updates: Partial<RankingWithItems>) => {
     try {
-      const { error: supabaseError } = await supabase
-        .from('ranking')
-        .update({
-          title: updates.title,
-          description: updates.description
-        })
-        .eq('id', id);
-
-      if (supabaseError) {
-        throw supabaseError;
-      }
-
+      // Update ranking in SQLite
+      await RankingService.updateRanking(id, updates);
+      
       setRankings(prev => prev.map(ranking =>
         ranking.id === id ? { ...ranking, ...updates } : ranking
       ));
@@ -100,15 +72,9 @@ export function useRankings() {
 
   const deleteRanking = async (id: number) => {
     try {
-      const { error: supabaseError } = await supabase
-        .from('ranking')
-        .delete()
-        .eq('id', id);
-
-      if (supabaseError) {
-        throw supabaseError;
-      }
-
+      // Delete ranking from SQLite
+      await RankingService.deleteRanking(id);
+      
       setRankings(prev => prev.filter(ranking => ranking.id !== id));
     } catch (err: any) {
       setError(err.message || 'Failed to delete ranking');
@@ -118,20 +84,8 @@ export function useRankings() {
 
   const addItem = async (rankingId: number, data: CreateItemRequest): Promise<Item> => {
     try {
-      const { data: newItem, error: supabaseError } = await supabase
-        .from('item')
-        .insert([{
-          name: data.name,
-          notes: data.notes,
-          rank: data.rank,
-          ranking_id: rankingId
-        }])
-        .select()
-        .single();
-
-      if (supabaseError) {
-        throw supabaseError;
-      }
+      // Add item to SQLite
+      const newItem = await RankingService.addItem(rankingId, data);
 
       // Update local state
       setRankings(prev => prev.map(ranking => {
@@ -153,14 +107,8 @@ export function useRankings() {
 
   const deleteItem = async (itemId: number) => {
     try {
-      const { error: supabaseError } = await supabase
-        .from('item')
-        .delete()
-        .eq('id', itemId);
-
-      if (supabaseError) {
-        throw supabaseError;
-      }
+      // Delete item from SQLite
+      await RankingService.deleteItem(itemId);
 
       // Refresh rankings to get updated data (with re-ordered ranks from trigger)
       await loadRankings();
@@ -172,21 +120,14 @@ export function useRankings() {
 
   const updateItemRanks = async (rankingId: number, items: Item[]) => {
     try {
-      // Create item-rank mapping for RPC function
+      // Create item-rank mapping
       const itemRanks: Record<string, number> = {};
       items.forEach((item, index) => {
         itemRanks[item.id.toString()] = index + 1;
       });
 
-      // Call Supabase RPC function for atomic update
-      const { error: rpcError } = await supabase.rpc('update_item_ranks', {
-        p_ranking_id: rankingId,
-        p_item_ranks: itemRanks
-      });
-
-      if (rpcError) {
-        throw rpcError;
-      }
+      // Update ranks in SQLite
+      await RankingService.updateItemRanks(rankingId, itemRanks);
 
       // Update local state with new ranks
       const updatedItems = items.map((item, index) => ({
@@ -206,9 +147,9 @@ export function useRankings() {
     }
   };
 
-  const getRanking = (id: number): RankingWithItems | undefined => {
+  const getRanking = useCallback((id: number): RankingWithItems | undefined => {
     return rankings.find(ranking => ranking.id === id);
-  };
+  }, [rankings]);
 
   return {
     rankings,

@@ -10,7 +10,7 @@ import { useRankings } from '@/hooks/useRankings';
 export default function AddItemScreen() {
   const router = useRouter();
   const { id } = useLocalSearchParams<{ id: string }>();
-  const { addItem, getRanking } = useRankings();
+  const { addItem, getRanking, rankings } = useRankings();
   const [name, setName] = useState('');
   const [notes, setNotes] = useState('');
   const [loading, setLoading] = useState(false);
@@ -24,15 +24,22 @@ export default function AddItemScreen() {
       return;
     }
 
-    if (!ranking) {
-      Alert.alert('Error', 'Ranking not found');
-      return;
+    if (loading) {
+      return; // Prevent double-tap
     }
 
     setLoading(true);
     try {
+      // Get current ranking to calculate next rank
+      const currentRanking = getRanking(rankingId);
+      
+      if (!currentRanking) {
+        Alert.alert('Error', 'Ranking not found');
+        return;
+      }
+
       // Calculate the next rank position (last position + 1)
-      const nextRank = (ranking.item?.length || 0) + 1;
+      const nextRank = (currentRanking.item?.length || 0) + 1;
       
       const newItemData: CreateItemRequest = {
         name: name.trim(),
@@ -41,7 +48,7 @@ export default function AddItemScreen() {
         ranking_id: rankingId
       };
 
-      // Create item using Supabase
+      // Create item using SQLite
       await addItem(rankingId, newItemData);
       
       // Navigate back to previous screen

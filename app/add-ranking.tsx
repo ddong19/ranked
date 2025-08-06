@@ -20,6 +20,10 @@ export default function AddRankingScreen() {
       return;
     }
 
+    if (loading) {
+      return; // Prevent double-tap
+    }
+
     setLoading(true);
     try {
       const newRankingData: CreateRankingRequest = {
@@ -27,7 +31,7 @@ export default function AddRankingScreen() {
         description: description.trim() || undefined,
       };
 
-      // Create ranking using Supabase
+      // Create ranking using SQLite
       await createRanking(newRankingData);
       
       // Navigate back to previous screen
