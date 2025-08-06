@@ -115,14 +115,16 @@ export default function Index() {
           onScrollBeginDrag={closeAllSwipeables}
         />
 
-        <TouchableOpacity 
-          style={styles.addButton}
-          onPress={handleAddRanking}
-          activeOpacity={0.8}
-        >
-          <Ionicons name="add" size={24} color="#666" />
-          <Text style={styles.addButtonText}>ADD RANKING</Text>
-        </TouchableOpacity>
+        <View style={styles.buttonContainer}>
+          <TouchableOpacity 
+            style={styles.addButton}
+            onPress={handleAddRanking}
+            activeOpacity={0.8}
+          >
+            <Ionicons name="add" size={24} color="#666" />
+            <Text style={styles.addButtonText}>ADD RANKING</Text>
+          </TouchableOpacity>
+        </View>
       </View>
     </SafeAreaView>
   );
@@ -185,12 +187,16 @@ const styles = StyleSheet.create({
     textTransform: 'uppercase',
     letterSpacing: 0.5,
   },
+  buttonContainer: {
+    backgroundColor: '#151718',
+    paddingHorizontal: 16,
+    paddingVertical: 20,
+  },
   addButton: {
     flexDirection: 'row',
     alignItems: 'center',
     justifyContent: 'center',
     paddingVertical: 16,
-    marginTop: 20,
   },
   addButtonText: {
     color: '#666',
