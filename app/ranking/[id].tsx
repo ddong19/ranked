@@ -159,7 +159,12 @@ export default function RankingDetailScreen() {
               data={ranking.item || []}
               onDragEnd={({ data }) => handleDragEnd(data)}
               keyExtractor={(item) => item.id.toString()}
-              dragItemOverflow={false}  // Prevent overflow rendering
+              dragItemOverflow={false}
+              activationDistance={5}
+              autoscrollSpeed={200}
+              autoscrollThreshold={50}
+              containerStyle={{ backgroundColor: 'transparent' }}
+              simultaneousHandlers={[]}
               renderItem={({ item, drag, isActive }) => {
               const getRankTextStyle = () => {
                 const baseStyle = item.rank === 1 ? styles.goldText :
