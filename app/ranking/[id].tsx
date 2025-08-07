@@ -83,6 +83,11 @@ export default function RankingDetailScreen() {
     router.push(`/ranking/${id}/edit`);
   };
 
+  const handleEditItem = (itemId: number) => {
+    // Navigate to edit item screen
+    router.push(`/ranking/${id}/edit-item/${itemId}`);
+  };
+
   const handleDeleteItem = async (itemId: number) => {
     try {
       // Close expanded item if we're deleting it
@@ -159,7 +164,7 @@ export default function RankingDetailScreen() {
               </Text>
             </View>
             <TouchableOpacity 
-              style={styles.editButton}
+              style={styles.editRankingButton}
               onPress={handleEditRanking}
               activeOpacity={0.7}
             >
@@ -254,7 +259,26 @@ export default function RankingDetailScreen() {
                         />
                       </View>
                       <View style={styles.itemContent}>
-                        <Text style={styles.itemName}>{item.name}</Text>
+                        <View style={styles.itemHeader}>
+                          <Text style={styles.itemName}>{item.name}</Text>
+                          <View style={styles.itemActions}>
+                            {!isExpanded && item.notes && item.notes.trim() && (
+                              <Ionicons name="document-text" size={14} color="#666" style={styles.notesIcon} />
+                            )}
+                            {isExpanded && (
+                              <TouchableOpacity 
+                                style={styles.editButton}
+                                onPress={(e) => {
+                                  e.stopPropagation();
+                                  handleEditItem(item.id);
+                                }}
+                                activeOpacity={0.7}
+                              >
+                                <Ionicons name="pencil" size={14} color="#888" />
+                              </TouchableOpacity>
+                            )}
+                          </View>
+                        </View>
                         {isExpanded && (
                           <View style={styles.notesSection}>
                             {item.notes && item.notes.trim() ? (
@@ -396,11 +420,30 @@ const styles = StyleSheet.create({
   itemContent: {
     flex: 1,
   },
+  itemHeader: {
+    flexDirection: 'row',
+    alignItems: 'flex-start',
+    justifyContent: 'space-between',
+    minHeight: 20, // Ensures consistent height
+  },
   itemName: {
     color: '#fff',
     fontSize: 16,
     fontWeight: '500',
-    marginBottom: 1,
+    flex: 1,
+  },
+  itemActions: {
+    flexDirection: 'row',
+    alignItems: 'flex-start',
+    gap: 8,
+    paddingTop: 1, // Align with text baseline
+  },
+  notesIcon: {
+    opacity: 0.7,
+  },
+  editButton: {
+    padding: 4,
+    borderRadius: 4,
   },
   notesSection: {
     marginTop: 8,
@@ -462,7 +505,7 @@ const styles = StyleSheet.create({
     flex: 1,
     paddingRight: 8,
   },
-  editButton: {
+  editRankingButton: {
     padding: 8,
   },
 });
