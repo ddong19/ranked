@@ -85,11 +85,29 @@ export default function RankingDetailScreen() {
 
   const handleDeleteItem = async (itemId: number) => {
     try {
+      // Close expanded item if we're deleting it
+      if (expandedItemId === itemId) {
+        setExpandedItemId(null);
+      }
       await deleteItem(itemId);
     } catch (error) {
       console.error('Failed to delete item:', error);
       Alert.alert('Error', 'Failed to delete item. Please try again.');
     }
+  };
+
+  const handleItemPress = (itemId: number) => {
+    // Close any open swipeables
+    closeAllSwipeables();
+    
+    // Toggle expansion: if already expanded, collapse; otherwise expand
+    setExpandedItemId(expandedItemId === itemId ? null : itemId);
+  };
+
+  const handleDragStart = () => {
+    // Close any expanded item when starting a drag
+    setExpandedItemId(null);
+    closeAllSwipeables();
   };
 
   const handleDragEnd = (reorderedData: any[]) => {
@@ -158,6 +176,7 @@ export default function RankingDetailScreen() {
           <View style={styles.absoluteDragContainer}>
             <DraggableFlatList
               data={ranking.item || []}
+              onDragBegin={handleDragStart}
               onDragEnd={({ data }) => handleDragEnd(data)}
               keyExtractor={(item) => item.id.toString()}
               dragItemOverflow={false}
@@ -213,10 +232,20 @@ export default function RankingDetailScreen() {
               }
 
               // Normal rendering with animations when not being dragged
+              const isExpanded = expandedItemId === item.id;
+              
               return (
-                <SwipeableItem onDelete={() => handleDeleteItem(item.id)}>
-                  <TouchableOpacity onLongPress={drag} activeOpacity={1} style={{ flex: 1 }}>
-                    <View style={styles.itemCard}>
+                <SwipeableItem 
+                  onDelete={() => handleDeleteItem(item.id)}
+                  onSwipeStart={() => setExpandedItemId(null)}
+                >
+                  <TouchableOpacity 
+                    onPress={() => handleItemPress(item.id)}
+                    onLongPress={drag} 
+                    activeOpacity={1} 
+                    style={{ flex: 1 }}
+                  >
+                    <View style={[styles.itemCard, isExpanded && styles.expandedItemCard]}>
                       <View style={rankNumberStyle}>
                         <AnimatedRankNumber 
                           rank={item.rank}
@@ -226,6 +255,15 @@ export default function RankingDetailScreen() {
                       </View>
                       <View style={styles.itemContent}>
                         <Text style={styles.itemName}>{item.name}</Text>
+                        {isExpanded && (
+                          <View style={styles.notesSection}>
+                            {item.notes && item.notes.trim() ? (
+                              <Text style={styles.notesText}>{item.notes}</Text>
+                            ) : (
+                              <Text style={styles.noNotesText}>No notes associated with this item</Text>
+                            )}
+                          </View>
+                        )}
                       </View>
                     </View>
                   </TouchableOpacity>
@@ -307,10 +345,13 @@ const styles = StyleSheet.create({
   },
   itemCard: {
     flexDirection: 'row',
-    alignItems: 'center',
+    alignItems: 'flex-start',
     backgroundColor: '#2a2a2a',
     borderRadius: 12,
     padding: 16,
+  },
+  expandedItemCard: {
+    backgroundColor: '#2f2f2f',
   },
   draggedItem: {
     transform: [{ scale: 0.95 }],
@@ -329,7 +370,7 @@ const styles = StyleSheet.create({
   rankNumber: {
     width: 22.2,
     alignItems: 'flex-start',
-    justifyContent: 'center',
+    justifyContent: 'flex-start',
     marginRight: 12,
   },
   goldText: {
@@ -360,6 +401,22 @@ const styles = StyleSheet.create({
     fontSize: 16,
     fontWeight: '500',
     marginBottom: 1,
+  },
+  notesSection: {
+    marginTop: 8,
+    paddingTop: 8,
+    borderTopWidth: 1,
+    borderTopColor: '#404040',
+  },
+  notesText: {
+    color: '#ccc',
+    fontSize: 14,
+    lineHeight: 20,
+  },
+  noNotesText: {
+    color: '#888',
+    fontSize: 14,
+    fontStyle: 'italic',
   },
   buttonContainer: {
     backgroundColor: '#151718',

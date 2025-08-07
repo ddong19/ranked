@@ -32,9 +32,10 @@ interface SwipeableItemProps {
   children: React.ReactNode;
   onDelete: () => void;
   onPress?: () => void;
+  onSwipeStart?: () => void;
 }
 
-export default function SwipeableItem({ children, onDelete, onPress }: SwipeableItemProps) {
+export default function SwipeableItem({ children, onDelete, onPress, onSwipeStart }: SwipeableItemProps) {
   const swipeableRef = useRef<any>(null);
 
   // Register this swipeable ref globally
@@ -51,6 +52,8 @@ export default function SwipeableItem({ children, onDelete, onPress }: Swipeable
   const handleSwipeableWillOpen = () => {
     // Close others immediately when this one will open (fires earlier)
     closeOthersImmediately(swipeableRef);
+    // Call onSwipeStart callback if provided
+    onSwipeStart?.();
   };
 
   const handleSwipeableOpen = () => {
