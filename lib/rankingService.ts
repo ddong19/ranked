@@ -2,14 +2,10 @@ import { getDatabase } from './database';
 import { Item, Ranking, RankingWithItems, CreateRankingRequest, CreateItemRequest } from '@/types/rankings';
 
 export class RankingService {
-  // Load all rankings with their items
   static async loadRankings(): Promise<RankingWithItems[]> {
     const db = await getDatabase();
     
-    // Get all rankings
     const rankings = await db.getAllAsync<Ranking>('SELECT * FROM ranking ORDER BY id');
-    
-    // Get items for each ranking
     const rankingsWithItems: RankingWithItems[] = [];
     
     for (const ranking of rankings) {
@@ -27,7 +23,6 @@ export class RankingService {
     return rankingsWithItems;
   }
 
-  // Create a new ranking
   static async createRanking(data: CreateRankingRequest): Promise<RankingWithItems> {
     const db = await getDatabase();
     
@@ -46,7 +41,6 @@ export class RankingService {
     return newRanking;
   }
 
-  // Update an existing ranking
   static async updateRanking(id: number, updates: Partial<RankingWithItems>): Promise<void> {
     const db = await getDatabase();
     
@@ -56,15 +50,13 @@ export class RankingService {
     );
   }
 
-  // Delete a ranking
   static async deleteRanking(id: number): Promise<void> {
     const db = await getDatabase();
     
-    // This will cascade delete items due to foreign key constraint
+    // Cascades to delete all associated items via foreign key constraint
     await db.runAsync('DELETE FROM ranking WHERE id = ?', [id]);
   }
 
-  // Add an item to a ranking
   static async addItem(rankingId: number, data: CreateItemRequest): Promise<Item> {
     const db = await getDatabase();
     
@@ -84,20 +76,18 @@ export class RankingService {
     return newItem;
   }
 
-  // Delete an item
   static async deleteItem(itemId: number): Promise<void> {
     const db = await getDatabase();
     
-    // The trigger will automatically adjust ranks of remaining items
+    // Database trigger automatically adjusts ranks of remaining items
     await db.runAsync('DELETE FROM item WHERE id = ?', [itemId]);
   }
 
-  // Update item ranks atomically (for drag and drop reordering)
   static async updateItemRanks(rankingId: number, itemRanks: Record<string, number>): Promise<void> {
     const db = await getDatabase();
     
     await db.withTransactionAsync(async () => {
-      // Get max rank to use as temporary offset to avoid constraint violations
+      // Use high offset to prevent unique constraint violations during reordering
       const maxRankResult = await db.getFirstAsync<{ max_rank: number }>(
         'SELECT COALESCE(MAX(rank), 0) + 1000 as max_rank FROM item WHERE ranking_id = ?',
         [rankingId]
@@ -111,7 +101,7 @@ export class RankingService {
         [offset, rankingId]
       );
       
-      // Step 2: Update each item to its final rank
+      // Step 2: Set final ranks for each item
       for (const [itemIdStr, newRank] of Object.entries(itemRanks)) {
         const itemId = parseInt(itemIdStr);
         await db.runAsync(
@@ -122,7 +112,6 @@ export class RankingService {
     });
   }
 
-  // Get a single ranking by ID
   static async getRanking(id: number): Promise<RankingWithItems | null> {
     const db = await getDatabase();
     
@@ -146,7 +135,6 @@ export class RankingService {
     };
   }
 
-  // Debug functions for manual database access
   static async executeRawSQL(sql: string, params: any[] = []): Promise<any> {
     const db = await getDatabase();
     

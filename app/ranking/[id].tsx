@@ -5,6 +5,7 @@ import { Alert, StyleSheet, Text, TouchableOpacity, View } from 'react-native';
 import DraggableFlatList from 'react-native-draggable-flatlist';
 import { SafeAreaView } from 'react-native-safe-area-context';
 
+import { AnimatedRankNumber } from '@/components/AnimatedRankNumber';
 import AppHeader from '@/components/AppHeader';
 import SwipeableItem, { closeAllSwipeables } from '@/components/SwipeableItem';
 import { useRankings } from '@/hooks/useRankings';
@@ -17,27 +18,32 @@ export default function RankingDetailScreen() {
   const [ranking, setRanking] = useState<RankingWithItems | null>(null);
   const [initialized, setInitialized] = useState(false);
 
-  // Refresh data whenever screen comes into focus
+  // Sync with database when screen gains focus
   useFocusEffect(
     React.useCallback(() => {
       refreshRankings();
     }, [refreshRankings])
   );
 
-  // Update local ranking when rankings change (e.g., after adding an item)
+  // Keep local state in sync with database changes (e.g., after adding/deleting items)
+  // Only updates when item count changes to avoid interfering with drag operations
   useEffect(() => {
-    if (id && rankings.length > 0) {
-      const updatedRanking = getRanking(parseInt(id));
-      if (updatedRanking) {
-        setRanking(updatedRanking);
-      }
-    }
-  }, [rankings, id, getRanking]);
-
-  useEffect(() => {
-    if (initialized) return; // Prevent multiple runs
+    if (!id || !rankings.length || !initialized) return;
     
-    // First try to use passed ranking data
+    const updatedRanking = getRanking(parseInt(id));
+    if (!updatedRanking) return;
+    
+    const itemCountChanged = !ranking || ranking.item.length !== updatedRanking.item.length;
+    if (itemCountChanged) {
+      setRanking(updatedRanking);
+    }
+  }, [rankings, id, getRanking, initialized, ranking]);
+
+  // Initialize ranking data on component mount
+  useEffect(() => {
+    if (initialized) return;
+    
+    // Try to use ranking data passed via navigation params first
     if (rankingData) {
       try {
         const parsedRanking = JSON.parse(rankingData);
@@ -49,7 +55,7 @@ export default function RankingDetailScreen() {
       }
     }
 
-    // Fallback to useRankings if no data passed or parsing failed
+    // Fallback to fetching from database if no params or parsing failed
     if (id) {
       const foundRanking = getRanking(parseInt(id));
       if (foundRanking) {
@@ -60,7 +66,7 @@ export default function RankingDetailScreen() {
       }
       setInitialized(true);
     }
-  }, [id]); // Only depend on stable id
+  }, [id]);
 
   const handleAddItem = () => {
     closeAllSwipeables();
@@ -76,19 +82,36 @@ export default function RankingDetailScreen() {
     }
   };
 
-  const handleDragEnd = async (reorderedData: any[]) => {
+  const handleDragEnd = (reorderedData: any[]) => {
     if (!ranking) return;
     
-    // Close any open swipeables
     closeAllSwipeables();
     
-    try {
-      // Update ranks in database using existing function
-      await updateItemRanks(ranking.id, reorderedData);
-    } catch (error) {
-      console.error('Failed to update item ranks:', error);
-      Alert.alert('Error', 'Failed to update item order. Please try again.');
-    }
+    // Use double requestAnimationFrame to wait for drag library cleanup
+    // This prevents race conditions that cause visual glitches
+    requestAnimationFrame(() => {
+      requestAnimationFrame(() => {
+        const updatedItems = reorderedData.map((item, index) => ({
+          ...item,
+          rank: index + 1
+        }));
+        
+        // Update UI immediately for smooth experience
+        setRanking({ ...ranking, item: updatedItems });
+        
+        // Sync to database in background
+        updateItemRanks(ranking.id, reorderedData).catch(error => {
+          console.error('Failed to update item ranks:', error);
+          Alert.alert('Error', 'Failed to update item order. Please try again.');
+          
+          // Rollback UI state on database error
+          const currentRanking = getRanking(parseInt(id || '0'));
+          if (currentRanking) {
+            setRanking(currentRanking);
+          }
+        });
+      });
+    });
   };
 
   // Don't render anything until we have ranking data
@@ -111,11 +134,13 @@ export default function RankingDetailScreen() {
           )}
         
         <View style={styles.listWrapper}>
-          <DraggableFlatList
-            data={ranking.item || []}
-            onDragEnd={({ data }) => handleDragEnd(data)}
-            keyExtractor={(item) => item.id.toString()}
-            renderItem={({ item, drag, isActive }) => {
+          <View style={styles.absoluteDragContainer}>
+            <DraggableFlatList
+              data={ranking.item || []}
+              onDragEnd={({ data }) => handleDragEnd(data)}
+              keyExtractor={(item) => item.id.toString()}
+              dragItemOverflow={false}  // Prevent overflow rendering
+              renderItem={({ item, drag, isActive }) => {
               const getRankTextStyle = () => {
                 const baseStyle = item.rank === 1 ? styles.goldText :
                                 item.rank === 2 ? styles.silverText :
@@ -142,17 +167,36 @@ export default function RankingDetailScreen() {
               const digitCount = item.rank.toString().length;
               const rankNumberStyle = {
                 ...styles.rankNumber,
-                alignItems: digitCount >= 3 ? 'flex-start' : 'center'
+                alignItems: digitCount >= 3 ? 'flex-start' as const : 'center' as const
               };
 
+              // Ultra-simplified rendering during drag to eliminate ALL conflicts
+              if (isActive) {
+                return (
+                  <View style={[styles.itemCard, styles.draggedItem]}>
+                    <View style={styles.rankNumber}>
+                      <Text style={styles.rankNumberText}>
+                        {item.rank}
+                      </Text>
+                    </View>
+                    <View style={styles.itemContent}>
+                      <Text style={styles.itemName}>{item.name}</Text>
+                    </View>
+                  </View>
+                );
+              }
+
+              // Normal rendering with animations when not being dragged
               return (
                 <SwipeableItem onDelete={() => handleDeleteItem(item.id)}>
                   <TouchableOpacity onLongPress={drag} activeOpacity={1} style={{ flex: 1 }}>
-                    <View style={[styles.itemCard, isActive && styles.draggedItem]}>
+                    <View style={styles.itemCard}>
                       <View style={rankNumberStyle}>
-                        <Text style={getRankTextStyle()}>
-                          {item.rank}
-                        </Text>
+                        <AnimatedRankNumber 
+                          rank={item.rank}
+                          style={getRankTextStyle()}
+                          digitCount={item.rank.toString().length}
+                        />
                       </View>
                       <View style={styles.itemContent}>
                         <Text style={styles.itemName}>{item.name}</Text>
@@ -171,6 +215,7 @@ export default function RankingDetailScreen() {
               </View>
             }
           />
+          </View>
         </View>
 
         <View style={styles.buttonContainer}>
@@ -216,6 +261,18 @@ const styles = StyleSheet.create({
   },
   listWrapper: {
     flex: 1,
+    overflow: 'hidden',
+    backgroundColor: '#151718',
+    zIndex: 1,
+  },
+  absoluteDragContainer: {
+    position: 'absolute',
+    top: 0,
+    left: 0,
+    right: 0,
+    bottom: 0,
+    overflow: 'hidden',
+    backgroundColor: '#151718',
   },
   listContainer: {
     paddingBottom: 20,
@@ -239,6 +296,8 @@ const styles = StyleSheet.create({
     shadowRadius: 8,
     elevation: 8,
     opacity: 0.9,
+    zIndex: 1000,
+    backgroundColor: '#2a2a2a',
   },
   rankNumber: {
     width: 22.2,
