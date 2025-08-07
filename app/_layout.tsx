@@ -7,6 +7,7 @@ export default function RootLayout() {
       <Stack
         screenOptions={{
           headerShown: false, // This removes the white header
+          contentStyle: { backgroundColor: '#151718' }, // Consistent dark background
         }}
       />
     </GestureHandlerRootView>

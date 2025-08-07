@@ -186,6 +186,19 @@ export function useRankings() {
     }
   };
 
+  const addOrUpdateRanking = async (data: CreateRankingRequest, editId?: number): Promise<RankingWithItems> => {
+    if (editId) {
+      await updateRanking(editId, data);
+      const updatedRanking = rankings.find(r => r.id === editId);
+      if (!updatedRanking) {
+        throw new Error('Ranking not found after update');
+      }
+      return updatedRanking;
+    } else {
+      return await createRanking(data);
+    }
+  };
+
   const getRanking = useCallback((id: number): RankingWithItems | undefined => {
     return rankings.find(ranking => ranking.id === id);
   }, [rankings]);
@@ -200,6 +213,7 @@ export function useRankings() {
     addItem,
     deleteItem,
     updateItemRanks,
+    addOrUpdateRanking,
     getRanking,
     refreshRankings: loadRankings,
   };

@@ -25,16 +25,20 @@ export default function RankingDetailScreen() {
     }, [refreshRankings])
   );
 
-  // Keep local state in sync with database changes (e.g., after adding/deleting items)
-  // Only updates when item count changes to avoid interfering with drag operations
+  // Keep local state in sync with database changes (e.g., after editing ranking, adding/deleting items)
+  // Updates when title, description, or item count changes
   useEffect(() => {
     if (!id || !rankings.length || !initialized) return;
     
     const updatedRanking = getRanking(parseInt(id));
     if (!updatedRanking) return;
     
-    const itemCountChanged = !ranking || ranking.item.length !== updatedRanking.item.length;
-    if (itemCountChanged) {
+    const hasChanges = !ranking || 
+      ranking.title !== updatedRanking.title ||
+      ranking.description !== updatedRanking.description ||
+      ranking.item.length !== updatedRanking.item.length;
+    
+    if (hasChanges) {
       setRanking(updatedRanking);
     }
   }, [rankings, id, getRanking, initialized, ranking]);
@@ -71,6 +75,11 @@ export default function RankingDetailScreen() {
   const handleAddItem = () => {
     closeAllSwipeables();
     router.push(`/ranking/${id}/add-item`);
+  };
+
+  const handleEditRanking = () => {
+    closeAllSwipeables();
+    router.push(`/ranking/${id}/edit`);
   };
 
   const handleDeleteItem = async (itemId: number) => {
@@ -124,9 +133,20 @@ export default function RankingDetailScreen() {
       <AppHeader />
 
         <View style={styles.content}>
-          <Text style={[styles.sectionTitle, !ranking.description && styles.sectionTitleNoDescription]}>
-            {ranking.title}
-          </Text>
+          <View style={styles.headerContainer}>
+            <View style={styles.titleContainer}>
+              <Text style={[styles.sectionTitle, !ranking.description && styles.sectionTitleNoDescription]}>
+                {ranking.title}
+              </Text>
+            </View>
+            <TouchableOpacity 
+              style={styles.editButton}
+              onPress={handleEditRanking}
+              activeOpacity={0.7}
+            >
+              <Ionicons name="pencil" size={19} color="#fff" />
+            </TouchableOpacity>
+          </View>
           {ranking.description && (
             <Text style={styles.sectionDescription}>
               {ranking.description}
@@ -229,6 +249,7 @@ export default function RankingDetailScreen() {
           </TouchableOpacity>
         </View>
       </View>
+      
     </SafeAreaView>
   );
 }
@@ -368,5 +389,17 @@ const styles = StyleSheet.create({
     color: '#666',
     fontSize: 14,
     textAlign: 'center',
+  },
+  headerContainer: {
+    flexDirection: 'row',
+    alignItems: 'flex-start',
+    marginBottom: 8,
+  },
+  titleContainer: {
+    flex: 1,
+    paddingRight: 8,
+  },
+  editButton: {
+    padding: 8,
   },
 });
