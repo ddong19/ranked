@@ -160,7 +160,6 @@ export default function RankingDetailScreen() {
               onDragEnd={({ data }) => handleDragEnd(data)}
               keyExtractor={(item) => item.id.toString()}
               dragItemOverflow={false}
-              activationDistance={5}
               autoscrollSpeed={200}
               autoscrollThreshold={50}
               containerStyle={{ backgroundColor: 'transparent' }}
