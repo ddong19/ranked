@@ -17,6 +17,7 @@ export default function RankingDetailScreen() {
   const { getRanking, rankings, refreshRankings, deleteItem, updateItemRanks } = useRankings();
   const [ranking, setRanking] = useState<RankingWithItems | null>(null);
   const [initialized, setInitialized] = useState(false);
+  const [expandedItemId, setExpandedItemId] = useState<number | null>(null);
 
   // Sync with database when screen gains focus
   useFocusEffect(
@@ -160,6 +161,7 @@ export default function RankingDetailScreen() {
               onDragEnd={({ data }) => handleDragEnd(data)}
               keyExtractor={(item) => item.id.toString()}
               dragItemOverflow={false}
+              activationDistance={10}
               autoscrollSpeed={200}
               autoscrollThreshold={50}
               containerStyle={{ backgroundColor: 'transparent' }}
