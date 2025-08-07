@@ -145,4 +145,29 @@ export class RankingService {
       item: items
     };
   }
+
+  // Debug functions for manual database access
+  static async executeRawSQL(sql: string, params: any[] = []): Promise<any> {
+    const db = await getDatabase();
+    
+    if (sql.trim().toLowerCase().startsWith('select')) {
+      return await db.getAllAsync(sql, params);
+    } else {
+      return await db.runAsync(sql, params);
+    }
+  }
+
+  static async getAllTables(): Promise<any[]> {
+    const db = await getDatabase();
+    return await db.getAllAsync(`
+      SELECT name FROM sqlite_master 
+      WHERE type='table' AND name NOT LIKE 'sqlite_%'
+      ORDER BY name
+    `);
+  }
+
+  static async getTableSchema(tableName: string): Promise<any[]> {
+    const db = await getDatabase();
+    return await db.getAllAsync(`PRAGMA table_info(${tableName})`);
+  }
 }
