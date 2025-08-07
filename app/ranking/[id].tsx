@@ -274,7 +274,7 @@ export default function RankingDetailScreen() {
                                 }}
                                 activeOpacity={0.7}
                               >
-                                <Ionicons name="pencil" size={14} color="#888" />
+                                <Ionicons name="pencil-outline" size={14} color="#888" />
                               </TouchableOpacity>
                             )}
                           </View>
@@ -422,7 +422,7 @@ const styles = StyleSheet.create({
   },
   itemHeader: {
     flexDirection: 'row',
-    alignItems: 'flex-start',
+    alignItems: 'center',
     justifyContent: 'space-between',
     minHeight: 20, // Ensures consistent height
   },
@@ -434,9 +434,8 @@ const styles = StyleSheet.create({
   },
   itemActions: {
     flexDirection: 'row',
-    alignItems: 'flex-start',
+    alignItems: 'center',
     gap: 8,
-    paddingTop: 1, // Align with text baseline
   },
   notesIcon: {
     opacity: 0.7,
