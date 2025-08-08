@@ -46,7 +46,7 @@ export class RankingService {
     
     await db.runAsync(
       'UPDATE ranking SET title = ?, description = ? WHERE id = ?',
-      [updates.title, updates.description || null, id]
+      [updates.title || '', updates.description || null, id]
     );
   }
 
@@ -74,6 +74,15 @@ export class RankingService {
     };
     
     return newItem;
+  }
+
+  static async updateItem(itemId: number, updates: Partial<CreateItemRequest>): Promise<void> {
+    const db = await getDatabase();
+    
+    await db.runAsync(
+      'UPDATE item SET name = ?, notes = ? WHERE id = ?',
+      [updates.name || '', updates.notes || null, itemId]
+    );
   }
 
   static async deleteItem(itemId: number): Promise<void> {

@@ -124,6 +124,30 @@ export function useRankings() {
     }
   };
 
+  const updateItem = async (itemId: number, updates: Partial<CreateItemRequest>) => {
+    const previousRankings = rankings;
+    
+    try {
+      // Update UI immediately for smooth user experience
+      const optimisticRankings = rankings.map(ranking => {
+        const updatedItems = ranking.item.map(item => 
+          item.id === itemId ? { ...item, ...updates } : item
+        );
+        return { ...ranking, item: updatedItems };
+      });
+
+      setRankings(optimisticRankings);
+
+      // Persist to database
+      await RankingService.updateItem(itemId, updates);
+    } catch (err: any) {
+      // Restore original state if database operation fails
+      setRankings(previousRankings);
+      setError(err.message || 'Failed to update item');
+      throw err;
+    }
+  };
+
   const deleteItem = async (itemId: number) => {
     const previousRankings = rankings;
     
@@ -211,6 +235,7 @@ export function useRankings() {
     updateRanking,
     deleteRanking,
     addItem,
+    updateItem,
     deleteItem,
     updateItemRanks,
     addOrUpdateRanking,

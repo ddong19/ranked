@@ -27,22 +27,16 @@ export default function RankingDetailScreen() {
   );
 
   // Keep local state in sync with database changes (e.g., after editing ranking, adding/deleting items)
-  // Updates when title, description, or item count changes
+  // Always update when rankings array changes since optimistic updates change the reference
   useEffect(() => {
     if (!id || !rankings.length || !initialized) return;
     
     const updatedRanking = getRanking(parseInt(id));
     if (!updatedRanking) return;
     
-    const hasChanges = !ranking || 
-      ranking.title !== updatedRanking.title ||
-      ranking.description !== updatedRanking.description ||
-      ranking.item.length !== updatedRanking.item.length;
-    
-    if (hasChanges) {
-      setRanking(updatedRanking);
-    }
-  }, [rankings, id, getRanking, initialized, ranking]);
+    // Always update since rankings reference changes when any data changes
+    setRanking(updatedRanking);
+  }, [rankings, id, getRanking, initialized]);
 
   // Initialize ranking data on component mount
   useEffect(() => {
@@ -85,7 +79,7 @@ export default function RankingDetailScreen() {
 
   const handleEditItem = (itemId: number) => {
     // Navigate to edit item screen
-    router.push(`/ranking/${id}/edit-item/${itemId}`);
+    router.push(`/ranking/${id}/edit-item?itemId=${itemId}`);
   };
 
   const handleDeleteItem = async (itemId: number) => {
