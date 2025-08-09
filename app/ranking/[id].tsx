@@ -435,8 +435,7 @@ const styles = StyleSheet.create({
     opacity: 0.7,
   },
   editButton: {
-    padding: 4,
-    borderRadius: 4,
+    opacity: 0.7,
   },
   notesSection: {
     marginTop: 8,
