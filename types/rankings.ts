@@ -1,5 +1,7 @@
 // TypeScript interfaces for the rankings database schema
 
+import { ParsedItem } from '@/utils/parseRankingListInput';
+
 // Database Type Definitions
 export interface Database {
   public: {
@@ -66,6 +68,7 @@ export interface RankingWithItems extends Ranking {
 export interface CreateRankingRequest {
   title: string;
   description?: string;
+  importedItems?: ParsedItem[];
 }
 
 export interface CreateItemRequest {

@@ -26,19 +26,46 @@ export class RankingService {
   static async createRanking(data: CreateRankingRequest): Promise<RankingWithItems> {
     const db = await getDatabase();
     
-    const result = await db.runAsync(
-      'INSERT INTO ranking (title, description) VALUES (?, ?)',
-      [data.title, data.description || null]
-    );
-    
-    const newRanking: RankingWithItems = {
-      id: result.lastInsertRowId,
-      title: data.title,
-      description: data.description || null,
-      item: []
-    };
-    
-    return newRanking;
+    return await db.withTransactionAsync(async () => {
+      // Create the ranking first
+      const result = await db.runAsync(
+        'INSERT INTO ranking (title, description) VALUES (?, ?)',
+        [data.title, data.description || null]
+      );
+      
+      const rankingId = result.lastInsertRowId;
+      const items: Item[] = [];
+      
+      // If imported items exist, create them
+      if (data.importedItems && data.importedItems.length > 0) {
+        for (let i = 0; i < data.importedItems.length; i++) {
+          const parsedItem = data.importedItems[i];
+          const rank = i + 1; // Rank starts at 1
+          
+          const itemResult = await db.runAsync(
+            'INSERT INTO item (name, notes, rank, ranking_id) VALUES (?, ?, ?, ?)',
+            [parsedItem.name, parsedItem.notes || null, rank, rankingId]
+          );
+          
+          items.push({
+            id: itemResult.lastInsertRowId,
+            name: parsedItem.name,
+            notes: parsedItem.notes || null,
+            rank: rank,
+            ranking_id: rankingId
+          });
+        }
+      }
+      
+      const newRanking: RankingWithItems = {
+        id: rankingId,
+        title: data.title,
+        description: data.description || null,
+        item: items
+      };
+      
+      return newRanking;
+    });
   }
 
   static async updateRanking(id: number, updates: Partial<RankingWithItems>): Promise<void> {
