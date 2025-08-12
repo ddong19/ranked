@@ -112,6 +112,20 @@ export default function RankingDetailScreen() {
   const handleDragEnd = (reorderedData: any[]) => {
     if (!ranking) return;
     
+    // Check if data actually changed - exit early if no changes
+    if (ranking.item.length !== reorderedData.length) {
+      return; // Different lengths = something was deleted/added
+    }
+    
+    // If lengths match, check if order changed (exits on first difference)
+    const hasOrderChanged = ranking.item.some((item, index) => 
+      item.id !== reorderedData[index].id
+    );
+    
+    if (!hasOrderChanged) {
+      return; // No changes, skip update
+    }
+    
     closeAllSwipeables();
     
     // Use double requestAnimationFrame to wait for drag library cleanup
