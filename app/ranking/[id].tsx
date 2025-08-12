@@ -195,7 +195,6 @@ export default function RankingDetailScreen() {
                 const digitCount = item.rank.toString().length;
                 let fontSize = 16; // Default for single digits
                 let fontWeight: any = 900; // Default weight for single digits
-                
                 if (digitCount === 2) {
                   fontSize = 13; // Smaller for double digits
                   fontWeight = 900; // Same weight for double digits
@@ -205,14 +204,14 @@ export default function RankingDetailScreen() {
                   fontWeight = 800; // Thinner for triple+ digits
                 }
                 
-                return { ...baseStyle, fontSize, fontWeight };
+                return { 
+                  ...baseStyle, 
+                  fontSize, 
+                  fontWeight,
+                  lineHeight: 20 // Fixed line height for all sizes
+                };
               };
 
-              const digitCount = item.rank.toString().length;
-              const rankNumberStyle = {
-                ...styles.rankNumber,
-                alignItems: digitCount >= 3 ? 'flex-start' as const : 'center' as const
-              };
 
               // Ultra-simplified rendering during drag to eliminate ALL conflicts
               if (isActive) {
@@ -245,7 +244,7 @@ export default function RankingDetailScreen() {
                     style={{ flex: 1 }}
                   >
                     <View style={[styles.itemCard, isExpanded && styles.expandedItemCard]}>
-                      <View style={rankNumberStyle}>
+                      <View style={styles.rankNumber}>
                         <AnimatedRankNumber 
                           rank={item.rank}
                           style={getRankTextStyle()}
@@ -387,8 +386,9 @@ const styles = StyleSheet.create({
   },
   rankNumber: {
     width: 22.2,
-    alignItems: 'flex-start',
-    justifyContent: 'flex-start',
+    minHeight: 20,
+    alignItems: 'center',
+    justifyContent: 'center',
     marginRight: 12,
   },
   goldText: {
