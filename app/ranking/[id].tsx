@@ -218,7 +218,7 @@ export default function RankingDetailScreen() {
                 return (
                   <View style={[styles.itemCard, styles.draggedItem]}>
                     <View style={styles.rankNumber}>
-                      <Text style={styles.rankNumberText}>
+                      <Text style={getRankTextStyle()}>
                         {item.rank}
                       </Text>
                     </View>
