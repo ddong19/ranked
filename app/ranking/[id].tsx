@@ -430,7 +430,7 @@ const styles = StyleSheet.create({
   },
   itemHeader: {
     flexDirection: 'row',
-    alignItems: 'center',
+    alignItems: 'flex-start',
     justifyContent: 'space-between',
     minHeight: 20, // Ensures consistent height
   },
@@ -444,6 +444,8 @@ const styles = StyleSheet.create({
     flexDirection: 'row',
     alignItems: 'center',
     gap: 8,
+    paddingLeft: 8,
+    marginTop: 2,
   },
   notesIcon: {
     opacity: 0.7,
