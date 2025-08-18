@@ -1,4 +1,4 @@
-import { Ionicons } from '@expo/vector-icons';
+import { Ionicons, MaterialIcons, Octicons } from '@expo/vector-icons';
 import { useFocusEffect, useLocalSearchParams, useRouter } from 'expo-router';
 import React, { useEffect, useState } from 'react';
 import { Alert, StyleSheet, Text, TouchableOpacity, View } from 'react-native';
@@ -176,7 +176,7 @@ export default function RankingDetailScreen() {
               onPress={handleEditRanking}
               activeOpacity={0.7}
             >
-              <Ionicons name="pencil" size={19} color="#fff" />
+              <MaterialIcons name="edit" size={25} color="#fff" />
             </TouchableOpacity>
           </View>
           {ranking.description && (
@@ -270,7 +270,7 @@ export default function RankingDetailScreen() {
                           <Text style={styles.itemName}>{item.name}</Text>
                           <View style={styles.itemActions}>
                             {!isExpanded && item.notes && item.notes.trim() && (
-                              <Ionicons name="document-text" size={14} color="#666" style={styles.notesIcon} />
+                              <Octicons name="note" size={18} color="#666" style={styles.notesIcon} />
                             )}
                             {isExpanded && (
                               <TouchableOpacity 
@@ -281,7 +281,7 @@ export default function RankingDetailScreen() {
                                 }}
                                 activeOpacity={0.7}
                               >
-                                <Ionicons name="pencil-outline" size={14} color="#888" />
+                                <Octicons name="pencil" size={18} color="#666" />
                               </TouchableOpacity>
                             )}
                           </View>
@@ -445,13 +445,17 @@ const styles = StyleSheet.create({
     alignItems: 'center',
     gap: 8,
     paddingLeft: 8,
-    marginTop: 2,
+    justifyContent: 'flex-end',
   },
   notesIcon: {
     opacity: 0.7,
+    width: 24,
+    textAlign: 'center',
   },
   editButton: {
     opacity: 0.7,
+    width: 24,
+    alignItems: 'center',
   },
   notesSection: {
     marginTop: 8,
@@ -514,6 +518,6 @@ const styles = StyleSheet.create({
     paddingRight: 8,
   },
   editRankingButton: {
-    padding: 8,
+    padding: 6,
   },
 });
