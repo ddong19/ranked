@@ -1,8 +1,7 @@
 import { Ionicons, MaterialIcons, Octicons } from '@expo/vector-icons';
 import { useFocusEffect, useLocalSearchParams, useRouter } from 'expo-router';
 import React, { useEffect, useState } from 'react';
-import { Alert, StyleSheet, Text, TouchableOpacity, View } from 'react-native';
-import DraggableFlatList from 'react-native-draggable-flatlist';
+import { Alert, FlatList, StyleSheet, Text, TouchableOpacity, View } from 'react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
 
 import { AnimatedRankNumber } from '@/components/AnimatedRankNumber';
@@ -14,7 +13,7 @@ import { RankingWithItems } from '@/types/rankings';
 export default function RankingDetailScreen() {
   const { id, rankingData } = useLocalSearchParams<{ id: string; rankingData?: string }>();
   const router = useRouter();
-  const { getRanking, rankings, refreshRankings, deleteItem, updateItemRanks } = useRankings();
+  const { getRanking, rankings, refreshRankings, deleteItem } = useRankings();
   const [ranking, setRanking] = useState<RankingWithItems | null>(null);
   const [initialized, setInitialized] = useState(false);
   const [expandedItemId, setExpandedItemId] = useState<number | null>(null);
@@ -103,57 +102,6 @@ export default function RankingDetailScreen() {
     setExpandedItemId(expandedItemId === itemId ? null : itemId);
   };
 
-  const handleDragStart = () => {
-    // Close any expanded item when starting a drag
-    setExpandedItemId(null);
-    closeAllSwipeables();
-  };
-
-  const handleDragEnd = (reorderedData: any[]) => {
-    if (!ranking) return;
-    
-    // Check if data actually changed - exit early if no changes
-    if (ranking.item.length !== reorderedData.length) {
-      return; // Different lengths = something was deleted/added
-    }
-    
-    // If lengths match, check if order changed (exits on first difference)
-    const hasOrderChanged = ranking.item.some((item, index) => 
-      item.id !== reorderedData[index].id
-    );
-    
-    if (!hasOrderChanged) {
-      return; // No changes, skip update
-    }
-    
-    closeAllSwipeables();
-    
-    // Use double requestAnimationFrame to wait for drag library cleanup
-    // This prevents race conditions that cause visual glitches
-    requestAnimationFrame(() => {
-      requestAnimationFrame(() => {
-        const updatedItems = reorderedData.map((item, index) => ({
-          ...item,
-          rank: index + 1
-        }));
-        
-        // Update UI immediately for smooth experience
-        setRanking({ ...ranking, item: updatedItems });
-        
-        // Sync to database in background
-        updateItemRanks(ranking.id, reorderedData).catch(error => {
-          console.error('Failed to update item ranks:', error);
-          Alert.alert('Error', 'Failed to update item order. Please try again.');
-          
-          // Rollback UI state on database error
-          const currentRanking = getRanking(parseInt(id || '0'));
-          if (currentRanking) {
-            setRanking(currentRanking);
-          }
-        });
-      });
-    });
-  };
 
   // Don't render anything until we have ranking data
   if (!ranking) {
@@ -187,18 +135,10 @@ export default function RankingDetailScreen() {
         
         <View style={styles.listWrapper}>
           <View style={styles.absoluteDragContainer}>
-            <DraggableFlatList
+            <FlatList
               data={ranking.item || []}
-              onDragBegin={handleDragStart}
-              onDragEnd={({ data }) => handleDragEnd(data)}
               keyExtractor={(item) => item.id.toString()}
-              dragItemOverflow={false}
-              activationDistance={10}
-              autoscrollSpeed={200}
-              autoscrollThreshold={50}
-              containerStyle={{ backgroundColor: 'transparent' }}
-              simultaneousHandlers={[]}
-              renderItem={({ item, drag, isActive }) => {
+              renderItem={({ item }) => {
               const getRankTextStyle = () => {
                 const baseStyle = item.rank === 1 ? styles.goldText :
                                 item.rank === 2 ? styles.silverText :
@@ -227,23 +167,7 @@ export default function RankingDetailScreen() {
               };
 
 
-              // Ultra-simplified rendering during drag to eliminate ALL conflicts
-              if (isActive) {
-                return (
-                  <View style={[styles.itemCard, styles.draggedItem]}>
-                    <View style={styles.rankNumber}>
-                      <Text style={getRankTextStyle()}>
-                        {item.rank}
-                      </Text>
-                    </View>
-                    <View style={styles.itemContent}>
-                      <Text style={styles.itemName}>{item.name}</Text>
-                    </View>
-                  </View>
-                );
-              }
-
-              // Normal rendering with animations when not being dragged
+              // Normal rendering
               const isExpanded = expandedItemId === item.id;
               
               return (
@@ -253,7 +177,6 @@ export default function RankingDetailScreen() {
                 >
                   <TouchableOpacity 
                     onPress={() => handleItemPress(item.id)}
-                    onLongPress={drag} 
                     activeOpacity={1} 
                     style={{ flex: 1 }}
                   >
@@ -301,8 +224,8 @@ export default function RankingDetailScreen() {
                 </SwipeableItem>
               );
             }}
-            contentContainerStyle={styles.listContainer}
-            showsVerticalScrollIndicator={false}
+              contentContainerStyle={styles.listContainer}
+              showsVerticalScrollIndicator={false}
             ListEmptyComponent={
               <View style={styles.emptyContainer}>
                 <Text style={styles.emptyText}>No items yet</Text>
@@ -383,20 +306,6 @@ const styles = StyleSheet.create({
   },
   expandedItemCard: {
     backgroundColor: '#2f2f2f',
-  },
-  draggedItem: {
-    transform: [{ scale: 0.95 }],
-    shadowColor: '#000',
-    shadowOffset: {
-      width: 0,
-      height: 4,
-    },
-    shadowOpacity: 0.3,
-    shadowRadius: 8,
-    elevation: 8,
-    opacity: 0.9,
-    zIndex: 1000,
-    backgroundColor: '#2a2a2a',
   },
   rankNumber: {
     width: 22.2,
