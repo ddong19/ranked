@@ -1,7 +1,6 @@
-import { View, StyleSheet, Alert, TextInput, TouchableOpacity, Modal } from 'react-native';
-import { useState, useEffect } from 'react';
+import { useEffect, useState } from 'react';
+import { Alert, Modal, StyleSheet, Text, TextInput, TouchableOpacity, View } from 'react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
-import { Text } from 'react-native';
 
 import { CreateRankingRequest, RankingWithItems } from '@/types/rankings';
 import { parseRankingListInput } from '@/utils/parseRankingListInput';
@@ -115,7 +114,7 @@ export default function RankingForm({
             style={[styles.input, styles.textArea]}
             value={description}
             onChangeText={setDescription}
-            placeholder="Add a description for your ranking..."
+            placeholder="Add a description for your ranking"
             placeholderTextColor="#666"
             multiline
             numberOfLines={4}
@@ -126,7 +125,7 @@ export default function RankingForm({
         {mode === 'create' && (
           <View style={styles.inputGroup}>
             <View style={styles.labelRow}>
-              <Text style={styles.labelInRow}>Import Items (Optional)</Text>
+              <Text style={styles.labelInRow}>Import Items</Text>
               <TouchableOpacity 
                 style={styles.helpIcon} 
                 onPress={() => setShowHelpModal(true)}

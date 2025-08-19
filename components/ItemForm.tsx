@@ -1,5 +1,5 @@
-import { useState, useEffect } from 'react';
-import { View, StyleSheet, Alert, TextInput, TouchableOpacity, Text } from 'react-native';
+import { useEffect, useState } from 'react';
+import { Alert, StyleSheet, Text, TextInput, TouchableOpacity, View } from 'react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
 
 import { CreateItemRequest, Item } from '@/types/rankings';
@@ -105,7 +105,7 @@ export default function ItemForm({
             style={[styles.input, styles.textArea]}
             value={notes}
             onChangeText={setNotes}
-            placeholder="Add notes about this item..."
+            placeholder="Add a note for your item"
             placeholderTextColor="#666"
             multiline
             numberOfLines={4}
