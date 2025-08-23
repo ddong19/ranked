@@ -1,4 +1,4 @@
-import { Ionicons, MaterialIcons, Octicons } from '@expo/vector-icons';
+import { Feather, Ionicons, MaterialIcons, Octicons } from '@expo/vector-icons';
 import { useFocusEffect, useLocalSearchParams, useRouter } from 'expo-router';
 import React, { useEffect, useState } from 'react';
 import { Alert, FlatList, StyleSheet, Text, TouchableOpacity, View } from 'react-native';
@@ -17,6 +17,7 @@ export default function RankingDetailScreen() {
   const [ranking, setRanking] = useState<RankingWithItems | null>(null);
   const [initialized, setInitialized] = useState(false);
   const [expandedItemId, setExpandedItemId] = useState<number | null>(null);
+  const [showCopyToast, setShowCopyToast] = useState(false);
 
   // Sync with database when screen gains focus
   useFocusEffect(
@@ -76,6 +77,18 @@ export default function RankingDetailScreen() {
     router.push(`/ranking/${id}/edit`);
   };
 
+  const handleCopyRanking = () => {
+    closeAllSwipeables();
+    // TODO: Implement copy functionality
+    console.log('Copy ranking clicked');
+    
+    // Show toast notification
+    setShowCopyToast(true);
+    setTimeout(() => {
+      setShowCopyToast(false);
+    }, 1500);
+  };
+
   const handleEditItem = (itemId: number) => {
     // Navigate to edit item screen
     router.push(`/ranking/${id}/edit-item?itemId=${itemId}`);
@@ -119,13 +132,28 @@ export default function RankingDetailScreen() {
                 {ranking.title}
               </Text>
             </View>
-            <TouchableOpacity 
-              style={styles.editRankingButton}
-              onPress={handleEditRanking}
-              activeOpacity={0.7}
-            >
-              <MaterialIcons name="edit" size={25} color="#fff" />
-            </TouchableOpacity>
+            <View style={styles.headerButtons}>
+              <TouchableOpacity 
+                style={styles.copyRankingButton}
+                onPress={handleCopyRanking}
+                activeOpacity={0.7}
+              >
+                <Feather name="copy" size={18} color="#fff" />
+              </TouchableOpacity>
+              <TouchableOpacity 
+                style={styles.editRankingButton}
+                onPress={handleEditRanking}
+                activeOpacity={0.7}
+              >
+                <MaterialIcons name="edit" size={20} color="#fff" />
+              </TouchableOpacity>
+              {showCopyToast && (
+                <View style={styles.copyToast}>
+                  <Text style={styles.copyToastText}>Ranking Copied!</Text>
+                  <View style={styles.copyToastArrow} />
+                </View>
+              )}
+            </View>
           </View>
           {ranking.description && (
             <Text style={styles.sectionDescription}>
@@ -428,5 +456,52 @@ const styles = StyleSheet.create({
   },
   editRankingButton: {
     padding: 6,
+  },
+  headerButtons: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: 4,
+    marginTop: 2,
+  },
+  copyRankingButton: {
+    padding: 6,
+  },
+  copyToast: {
+    position: 'absolute',
+    top: -26,
+    left: -32,
+    backgroundColor: '#2a2a2a',
+    paddingHorizontal: 10,
+    paddingVertical: 5,
+    borderRadius: 6,
+    zIndex: 1000,
+    shadowColor: '#000',
+    shadowOffset: {
+      width: 0,
+      height: 1,
+    },
+    shadowOpacity: 0.2,
+    shadowRadius: 2,
+    elevation: 3,
+  },
+  copyToastText: {
+    color: '#fff',
+    fontSize: 11,
+    fontWeight: '500',
+    textAlign: 'center',
+  },
+  copyToastArrow: {
+    position: 'absolute',
+    bottom: -5,
+    left: '50%',
+    marginLeft: -5,
+    width: 0,
+    height: 0,
+    borderLeftWidth: 5,
+    borderRightWidth: 5,
+    borderTopWidth: 5,
+    borderLeftColor: 'transparent',
+    borderRightColor: 'transparent',
+    borderTopColor: '#2a2a2a',
   },
 });
