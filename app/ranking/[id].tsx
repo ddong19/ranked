@@ -1,4 +1,5 @@
 import { Feather, Ionicons, MaterialIcons, Octicons } from '@expo/vector-icons';
+import * as Clipboard from 'expo-clipboard';
 import { useFocusEffect, useLocalSearchParams, useRouter } from 'expo-router';
 import React, { useEffect, useState } from 'react';
 import { Alert, FlatList, StyleSheet, Text, TouchableOpacity, View } from 'react-native';
@@ -77,16 +78,41 @@ export default function RankingDetailScreen() {
     router.push(`/ranking/${id}/edit`);
   };
 
-  const handleCopyRanking = () => {
-    closeAllSwipeables();
-    // TODO: Implement copy functionality
-    console.log('Copy ranking clicked');
+  const formatRankingForCopy = (ranking: RankingWithItems): string => {
+    let formattedText = `=== ${ranking.title} ===\n`;
     
-    // Show toast notification
-    setShowCopyToast(true);
-    setTimeout(() => {
-      setShowCopyToast(false);
-    }, 1500);
+    if (ranking.description && ranking.description.trim()) {
+      formattedText += `${ranking.description}\n`;
+    }
+    
+    ranking.item
+      .sort((a, b) => a.rank - b.rank)
+      .forEach((item) => {
+        const notes = item.notes && item.notes.trim() ? ` (${item.notes})` : '';
+        formattedText += `${item.rank}. ${item.name}${notes}\n`;
+      });
+    
+    return formattedText.trim();
+  };
+
+  const handleCopyRanking = async () => {
+    closeAllSwipeables();
+    
+    if (!ranking) return;
+    
+    try {
+      const formattedText = formatRankingForCopy(ranking);
+      await Clipboard.setStringAsync(formattedText);
+      
+      // Show toast notification
+      setShowCopyToast(true);
+      setTimeout(() => {
+        setShowCopyToast(false);
+      }, 1500);
+    } catch (error) {
+      console.error('Failed to copy ranking:', error);
+      Alert.alert('Error', 'Failed to copy ranking. Please try again.');
+    }
   };
 
   const handleEditItem = (itemId: number) => {
