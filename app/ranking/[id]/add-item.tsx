@@ -9,7 +9,7 @@ import { useRankings } from '@/hooks/useRankings';
 export default function AddItemScreen() {
   const router = useRouter();
   const { id } = useLocalSearchParams<{ id: string }>();
-  const { addItem, getRanking } = useRankings();
+  const { addItem, getRanking, updateItemRanks } = useRankings();
   const [loading, setLoading] = useState(false);
 
   const rankingId = parseInt(id || '0');
@@ -27,20 +27,31 @@ export default function AddItemScreen() {
         return;
       }
 
-      // Use custom rank if provided, otherwise calculate next rank
-      // If rank is larger than list, set to end of list
-      const maxRank = (currentRanking.item?.length || 0) + 1;
-      const nextRank = data.rank ? Math.min(data.rank, maxRank) : maxRank;
+      // Always create item at end to avoid unique constraint violation
+      const currentItemCount = currentRanking.item?.length || 0;
+      const endRank = currentItemCount + 1;
+      const desiredRank = data.rank ? Math.min(data.rank, endRank) : endRank;
       
       const newItemData: CreateItemRequest = {
         name: data.name,
         notes: data.notes,
-        rank: nextRank,
+        rank: endRank, // Always create at end first
         ranking_id: rankingId
       };
 
       // Create item in local database
-      await addItem(rankingId, newItemData);
+      const newItem = await addItem(rankingId, newItemData);
+      
+      // If user specified a different rank, reorder the list
+      if (data.rank && desiredRank !== endRank) {
+        // Build the new list with the created item
+        const items = [...currentRanking.item, newItem];
+        // Remove new item from end and insert at desired position
+        const filteredItems = items.filter(item => item.id !== newItem.id);
+        filteredItems.splice(desiredRank - 1, 0, newItem);
+        // Reorder entire list
+        await updateItemRanks(rankingId, filteredItems);
+      }
       
       // Navigate back to previous screen
       router.back();
