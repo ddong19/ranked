@@ -27,8 +27,10 @@ export default function AddItemScreen() {
         return;
       }
 
-      // Calculate the next rank position (last position + 1)
-      const nextRank = (currentRanking.item?.length || 0) + 1;
+      // Use custom rank if provided, otherwise calculate next rank
+      // If rank is larger than list, set to end of list
+      const maxRank = (currentRanking.item?.length || 0) + 1;
+      const nextRank = data.rank ? Math.min(data.rank, maxRank) : maxRank;
       
       const newItemData: CreateItemRequest = {
         name: data.name,

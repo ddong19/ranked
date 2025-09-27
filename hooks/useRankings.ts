@@ -139,7 +139,7 @@ export function useRankings() {
       setRankings(optimisticRankings);
 
       // Persist to database
-      await RankingService.updateItem(itemId, updates);
+      await RankingService.updateItemNameAndNotes(itemId, updates);
     } catch (err: any) {
       // Restore original state if database operation fails
       setRankings(previousRankings);

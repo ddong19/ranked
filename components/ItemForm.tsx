@@ -21,11 +21,13 @@ export default function ItemForm({
 }: ItemFormProps) {
   const [name, setName] = useState('');
   const [notes, setNotes] = useState('');
+  const [rank, setRank] = useState('');
 
   useEffect(() => {
     if (mode === 'edit' && initialData) {
       setName(initialData.name);
       setNotes(initialData.notes || '');
+      setRank(initialData.rank.toString());
     }
   }, [mode, initialData]);
 
@@ -39,10 +41,12 @@ export default function ItemForm({
       return; // Prevent double-tap
     }
 
+    const parsedRank = rank.trim() ? parseInt(rank.trim()) : (initialData?.rank || 1);
+    
     const itemData: CreateItemRequest = {
       name: name.trim(),
       notes: notes.trim() || undefined,
-      rank: initialData?.rank || 1, // Will be overridden for new items
+      rank: parsedRank,
       ranking_id: initialData?.ranking_id || 0 // Will be overridden for new items
     };
 
@@ -52,7 +56,8 @@ export default function ItemForm({
   const handleCancel = () => {
     const originalName = initialData?.name || '';
     const originalNotes = initialData?.notes || '';
-    const hasChanges = name !== originalName || notes !== originalNotes;
+    const originalRank = initialData?.rank?.toString() || '';
+    const hasChanges = name !== originalName || notes !== originalNotes || rank !== originalRank;
     
     if (hasChanges) {
       Alert.alert(
@@ -88,15 +93,29 @@ export default function ItemForm({
 
       <View style={styles.content}>
         <View style={styles.inputGroup}>
-          <Text style={styles.label}>Name *</Text>
-          <TextInput
-            style={styles.input}
-            value={name}
-            onChangeText={setName}
-            placeholder="e.g., The Godfather"
-            placeholderTextColor="#666"
-            maxLength={255}
-          />
+          <View style={styles.rowLabels}>
+            <Text style={[styles.label, styles.nameLabel]}>Name *</Text>
+            <Text style={[styles.label, styles.rankLabel]}>Rank</Text>
+          </View>
+          <View style={styles.nameRankRow}>
+            <TextInput
+              style={[styles.input, styles.nameInput]}
+              value={name}
+              onChangeText={setName}
+              placeholder="e.g., The Godfather"
+              placeholderTextColor="#666"
+              maxLength={255}
+            />
+            <TextInput
+              style={[styles.input, styles.rankInput]}
+              value={rank}
+              onChangeText={setRank}
+              placeholder="#"
+              placeholderTextColor="#666"
+              keyboardType="number-pad"
+              maxLength={3}
+            />
+          </View>
         </View>
 
         <View style={styles.inputGroup}>
@@ -178,5 +197,24 @@ const styles = StyleSheet.create({
   },
   textArea: {
     minHeight: 100,
+  },
+  rowLabels: {
+    flexDirection: 'row',
+  },
+  nameRankRow: {
+    flexDirection: 'row',
+    gap: 12,
+  },
+  nameInput: {
+    flex: 1,
+  },
+  rankInput: {
+    width: 60,
+  },
+  nameLabel: {
+    flex: 1,
+  },
+  rankLabel: {
+    width: 60,
   },
 });

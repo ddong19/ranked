@@ -103,7 +103,7 @@ export class RankingService {
     return newItem;
   }
 
-  static async updateItem(itemId: number, updates: Partial<CreateItemRequest>): Promise<void> {
+  static async updateItemNameAndNotes(itemId: number, updates: { name?: string; notes?: string }): Promise<void> {
     const db = await getDatabase();
     
     await db.runAsync(

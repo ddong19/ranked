@@ -10,7 +10,7 @@ import { Item, CreateItemRequest } from '@/types/rankings';
 export default function EditItemScreen() {
   const { id, itemId } = useLocalSearchParams<{ id: string; itemId: string }>();
   const router = useRouter();
-  const { getRanking, updateItem, loading: rankingsLoading, refreshRankings } = useRankings();
+  const { getRanking, updateItem, updateItemRanks, loading: rankingsLoading, refreshRankings } = useRankings();
   const [item, setItem] = useState<Item | null>(null);
   const [saving, setSaving] = useState(false);
   const [initializing, setInitializing] = useState(true);
@@ -46,10 +46,35 @@ export default function EditItemScreen() {
 
     setSaving(true);
     try {
+      // Get current ranking to validate rank bounds
+      const ranking = getRanking(parseInt(id!));
+      if (!ranking) throw new Error('Ranking not found');
+      
+      const maxRank = ranking.item?.length || 1;
+      const validRank = data.rank ? Math.min(data.rank, maxRank) : item.rank;
+      const rankChanged = validRank !== item.rank;
+      
+
+      // Always update name and notes
       await updateItem(item.id, {
         name: data.name,
         notes: data.notes
       });
+
+      // If rank changed, reorder the entire list
+      if (rankChanged) {
+        const items = [...ranking.item];
+        const itemToMove = items.find(i => i.id === item.id);
+        if (itemToMove) {
+          // Remove item from current position
+          const filteredItems = items.filter(i => i.id !== item.id);
+          // Insert at new position (validRank - 1 because array is 0-indexed)
+          filteredItems.splice(validRank - 1, 0, { ...itemToMove, rank: validRank });
+          
+          await updateItemRanks(parseInt(id!), filteredItems);
+        }
+      }
+      
       router.back();
     } catch (error: any) {
       Alert.alert('Error', error.message || 'Failed to update item');
