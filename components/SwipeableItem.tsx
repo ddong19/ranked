@@ -103,12 +103,12 @@ const styles = StyleSheet.create({
     marginBottom: 12,
   },
   rightAction: {
-    width: 80,
+    width: 100,
     alignItems: 'center',
     justifyContent: 'center',
   },
   deleteButton: {
-    width: 80,
+    width: 100,
     height: '100%',
     backgroundColor: '#ff4444',
     borderTopRightRadius: 12,

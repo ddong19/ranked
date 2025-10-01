@@ -225,9 +225,8 @@ export default function RankingDetailScreen() {
               const isExpanded = expandedItemId === item.id;
               
               return (
-                <SwipeableItem 
+                <SwipeableItem
                   onDelete={() => handleDeleteItem(item.id)}
-                  onSwipeStart={() => setExpandedItemId(null)}
                 >
                   <TouchableOpacity 
                     onPress={() => handleItemPress(item.id)}
