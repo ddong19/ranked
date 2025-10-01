@@ -249,13 +249,14 @@ export default function RankingDetailScreen() {
                               <Octicons name="note" size={18} color="#666" style={styles.notesIcon} />
                             )}
                             {isExpanded && (
-                              <TouchableOpacity 
+                              <TouchableOpacity
                                 style={styles.editButton}
                                 onPress={(e) => {
                                   e.stopPropagation();
                                   handleEditItem(item.id);
                                 }}
                                 activeOpacity={0.7}
+                                hitSlop={{top: 15, bottom: 15, left: 15, right: 15}}
                               >
                                 <Octicons name="pencil" size={18} color="#666" />
                               </TouchableOpacity>
