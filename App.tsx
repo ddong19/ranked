@@ -1,7 +1,15 @@
 import { StatusBar } from 'expo-status-bar';
 import { StyleSheet, Text, View } from 'react-native';
+import { useEffect } from 'react';
+import { initDb } from './src/db/database';
 
 export default function App() {
+  useEffect(() => {
+    initDb().catch(error => {
+      console.error('Database initialization failed:', error);
+    });
+  }, []);
+
   return (
     <View style={styles.container}>
       <Text>Open up App.tsx to start working on your app!</Text>
