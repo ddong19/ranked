@@ -134,6 +134,7 @@ const styles = StyleSheet.create({
     marginBottom: 24,
   },
   listContainer: {
+    flexGrow: 1,
     paddingBottom: 100, // Space for add button
   },
   buttonContainer: {
