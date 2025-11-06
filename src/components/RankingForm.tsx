@@ -22,14 +22,12 @@ export default function RankingForm({ onSave, onCancel }: RankingFormProps) {
   const [importText, setImportText] = useState('');
   const [showHelpModal, setShowHelpModal] = useState(false);
 
-  // STEP 1: Form Validation
   const handleSave = () => {
     if (!title.trim()) {
       Alert.alert('Error', 'Please enter a title for your ranking');
       return;
     }
 
-    // STEP 4: Parse imported items (for future use)
     if (importText.trim()) {
       const parsedItems = parseRankingListInput(importText.trim());
       console.log('Parsed items:', parsedItems);
@@ -39,7 +37,6 @@ export default function RankingForm({ onSave, onCancel }: RankingFormProps) {
     onSave();
   };
 
-  // STEP 2: Discard Changes Dialog
   const handleCancel = () => {
     const hasChanges = title.trim() !== '' || description.trim() !== '' || importText.trim() !== '';
 
@@ -102,7 +99,7 @@ export default function RankingForm({ onSave, onCancel }: RankingFormProps) {
 
         {/* Import Items Input with Help Icon */}
         <View style={styles.inputGroup}>
-          {/* STEP 3: Help Icon */}
+          {/* Help Icon */}
           <View style={styles.labelRow}>
             <Text style={styles.label}>Import Items</Text>
             <TouchableOpacity
@@ -126,7 +123,7 @@ export default function RankingForm({ onSave, onCancel }: RankingFormProps) {
         </View>
       </View>
 
-      {/* STEP 3: Help Modal */}
+      {/* Help Modal */}
       <Modal
         visible={showHelpModal}
         transparent={true}
