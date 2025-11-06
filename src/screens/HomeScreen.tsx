@@ -6,6 +6,7 @@ import { SafeAreaView } from 'react-native-safe-area-context';
 
 import AppHeader from '../components/AppHeader'
 import RankingCard from '../components/RankingCard';
+import { useRankings } from '../logic/useRankings';
 import { closeAllSwipeables } from '../components/SwipeableItem';
 
 // For now, mock data - you'll replace this with your data layer later
@@ -18,15 +19,13 @@ type RankingItem = {
 
 export default function HomeScreen() {
   const router = useRouter();
-  
-  // Mock data - replace with your actual data source
-  const [rankings, setRankings] = React.useState<RankingItem[]>([]);
+  const { rankings, refreshRankings } = useRankings();
 
-  // Refresh data when screen comes into focus
+  // Refresh when screen comes into focus
   useFocusEffect(
     React.useCallback(() => {
-      // TODO: Load your rankings data here
-    }, [])
+      refreshRankings();
+    }, [refreshRankings])
   );
 
   const handleRankingPress = (ranking: RankingItem) => {
@@ -45,11 +44,12 @@ export default function HomeScreen() {
     const ranking = rankings.find(r => r.id === rankingId);
     if (!ranking) return;
 
-    const itemText = ranking.itemCount === 1 ? 'Item' : 'Items';
+    const itemCount = ranking.items?.length || 0;
+    const itemText = itemCount === 1 ? 'Item' : 'Items';
     
     Alert.alert(
       'Delete Ranking',
-      `Are you sure you want to delete "${ranking.title}" and its ${ranking.itemCount} ${itemText.toLowerCase()}?`,
+      `Are you sure you want to delete "${ranking.title}" and its ${itemCount} ${itemText.toLowerCase()}?`,
       [
         {
           text: 'Cancel',
@@ -87,10 +87,15 @@ export default function HomeScreen() {
           data={rankings}
           renderItem={({ item }) => (
             <RankingCard
-              ranking={item}
-              onPress={() => handleRankingPress(item)}
-              onDelete={() => handleDeleteRanking(item.id)}
-            />
+            ranking={{
+              id: item.id,
+              title: item.title,
+              description: item.description,
+              itemCount: item.items.length,
+            }}
+            onPress={() => {}}
+            onDelete={() => handleDeleteRanking(item.id)}
+          />
           )}
           keyExtractor={(item) => item.id.toString()}
           contentContainerStyle={styles.listContainer}

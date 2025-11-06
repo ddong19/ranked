@@ -11,10 +11,16 @@ import {
 import { SafeAreaView } from 'react-native-safe-area-context';
 import { parseRankingListInput, ParsedItem } from '../utils/parseRankingListInput';
 
-interface RankingFormProps {
-  onSave: () => void;
-  onCancel: () => void;
-}
+export interface RankingFormData {
+    title: string;
+    description: string;
+    importedItems?: ParsedItem[];
+  }
+  
+  interface RankingFormProps {
+    onSave: (data: RankingFormData) => void;
+    onCancel: () => void;
+  }
 
 export default function RankingForm({ onSave, onCancel }: RankingFormProps) {
   const [title, setTitle] = useState('');
@@ -27,14 +33,23 @@ export default function RankingForm({ onSave, onCancel }: RankingFormProps) {
       Alert.alert('Error', 'Please enter a title for your ranking');
       return;
     }
-
+  
+    // Prepare the data to pass back
+    const formData: RankingFormData = {
+      title: title.trim(),
+      description: description.trim(),
+    };
+  
+    // Parse imported items if provided
     if (importText.trim()) {
       const parsedItems = parseRankingListInput(importText.trim());
-      console.log('Parsed items:', parsedItems);
-      // You'll use these parsed items in Step 5
+      if (parsedItems.length > 0) {
+        formData.importedItems = parsedItems;
+      }
     }
-
-    onSave();
+  
+    // Pass data back to parent
+    onSave(formData);
   };
 
   const handleCancel = () => {
