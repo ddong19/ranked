@@ -1,91 +1,77 @@
-import { useState } from 'react';
+import { useState, useEffect, useCallback } from 'react';
+import { RankingService, type Ranking, type RankingFormData } from '../db/rankingService';
+import { initDatabase } from '../db/database';
 
-// Type definitions
-export interface ParsedItem {
-  name: string;
-  notes?: string;
-}
-
-export interface RankingFormData {
-  title: string;
-  description: string;
-  importedItems?: ParsedItem[];
-}
-
-export interface RankingItem {
-  id: number;
-  name: string;
-  notes?: string | null;
-  rank: number;
-}
-
-export interface Ranking {
-  id: number;
-  title: string;
-  description?: string | null;
-  items: RankingItem[];
-}
+export type { ParsedItem, RankingFormData, RankingItem, Ranking } from '../db/rankingService';
 
 export function useRankings() {
   const [rankings, setRankings] = useState<Ranking[]>([]);
+  const [loading, setLoading] = useState(true);
+  const [error, setError] = useState<string | null>(null);
 
-  // CREATE RANKING FUNCTION (Step 5)
+  // Initialize database on mount
+  useEffect(() => {
+    initializeAndLoad();
+  }, []);
+
+  const initializeAndLoad = async () => {
+    try {
+      setLoading(true);
+      await initDatabase();
+      await loadRankings();
+    } catch (err: any) {
+      setError(err.message || 'Failed to initialize database');
+      console.error('Database initialization error:', err);
+    } finally {
+      setLoading(false);
+    }
+  };
+
+  const loadRankings = useCallback(async () => {
+    try {
+      setError(null);
+      const rankingsWithItems = await RankingService.loadRankings();
+      setRankings(rankingsWithItems);
+    } catch (err: any) {
+      setError(err.message || 'Failed to load rankings');
+      console.error('Error loading rankings:', err);
+    }
+  }, []);
+
   const createRanking = async (data: RankingFormData): Promise<Ranking> => {
     try {
-      // TODO: Replace with your actual database/API call
+      const newRanking = await RankingService.createRanking(data);
       
-      // For now, create a mock ranking
-      const newRanking: Ranking = {
-        id: Date.now(), // Temporary ID
-        title: data.title,
-        description: data.description || null,
-        items: [], // We'll add items next
-      };
-
-      // If imported items exist, convert them to RankingItems
-      if (data.importedItems && data.importedItems.length > 0) {
-        newRanking.items = data.importedItems.map((item, index) => ({
-          id: Date.now() + index, // Temporary ID
-          name: item.name,
-          notes: item.notes || null,
-          rank: index + 1, // Rank based on order
-        }));
-      }
-
-      // TODO: Save to database here
-      console.log('Creating ranking:', newRanking);
-
       // Update local state
-      setRankings((prev) => [...prev, newRanking]);
-
+      setRankings((prev) => [newRanking, ...prev]); // Add to front
+      
       return newRanking;
-    } catch (error: any) {
-      console.error('Failed to create ranking:', error);
-      throw new Error(error.message || 'Failed to create ranking');
+    } catch (err: any) {
+      setError(err.message || 'Failed to create ranking');
+      console.error('Error creating ranking:', err);
+      throw err;
     }
   };
 
   const deleteRanking = async (id: number) => {
     try {
-      // TODO: Replace with your actual delete API call
+      await RankingService.deleteRanking(id);
       setRankings((prev) => prev.filter((ranking) => ranking.id !== id));
-    } catch (error: any) {
-      console.error('Failed to delete ranking:', error);
-      throw error;
+    } catch (err: any) {
+      setError(err.message || 'Failed to delete ranking');
+      console.error('Error deleting ranking:', err);
+      throw err;
     }
   };
 
-  const refreshRankings = async () => {
-    try {
-      // TODO: Replace with your actual fetch API call
-      console.log('Refreshing rankings...');
-    } catch (error: any) {
-      console.error('Failed to refresh rankings:', error);
-    }
-  };
+  const refreshRankings = useCallback(async () => {
+    await loadRankings();
+  }, [loadRankings]);
 
   return {
     rankings,
+    loading,
+    error,
     createRanking,
     deleteRanking,
     refreshRankings,

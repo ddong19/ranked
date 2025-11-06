@@ -1,11 +1,11 @@
 import { StatusBar } from 'expo-status-bar';
 import { StyleSheet, Text, View } from 'react-native';
 import { useEffect } from 'react';
-import { initDb } from './src/db/database';
+import { initDatabase } from './src/db/database';
 
 export default function App() {
   useEffect(() => {
-    initDb().catch(error => {
+    initDatabase().catch(error => {
       console.error('Database initialization failed:', error);
     });
   }, []);

@@ -1,22 +1,53 @@
 import * as SQLite from 'expo-sqlite';
 
+const DB_NAME = 'ranked.db';
+
 let db: SQLite.SQLiteDatabase | null = null;
 
-export async function initDb() {
+/**
+ * Initialize the database and create tables if needed
+ */
+export async function initDatabase(): Promise<SQLite.SQLiteDatabase> {
   if (db) {
     return db;
   }
 
   try {
-    // Open database asynchronously
-    db = await SQLite.openDatabaseAsync('ranked.db');
+    // Open database
+    db = await SQLite.openDatabaseAsync(DB_NAME);
     
-    // Enable foreign keys
+    // Enable foreign keys for cascade deletes
     await db.execAsync('PRAGMA foreign_keys = ON;');
     
-    // Create tables
+    // Create tables if they don't exist
+    await createTablesIfNeeded();
+    
+    console.log('Database initialized successfully');
+    return db;
+  } catch (error) {
+    console.error('Failed to initialize database:', error);
+    throw error;
+  }
+}
+
+/**
+ * Create database tables on first run
+ */
+async function createTablesIfNeeded() {
+  if (!db) throw new Error('Database not initialized');
+
+  // Check if tables already exist
+  const tablesExist = await db.getFirstAsync(`
+    SELECT name FROM sqlite_master 
+    WHERE type='table' AND name='ranking'
+  `);
+
+  if (!tablesExist) {
+    console.log('Creating database tables for first time...');
+    
+    // Create ranking table
     await db.execAsync(`
-      CREATE TABLE IF NOT EXISTS ranking (
+      CREATE TABLE ranking (
         id INTEGER PRIMARY KEY AUTOINCREMENT,
         title TEXT NOT NULL,
         description TEXT,
@@ -24,8 +55,9 @@ export async function initDb() {
       );
     `);
 
+    // Create item table with foreign key
     await db.execAsync(`
-      CREATE TABLE IF NOT EXISTS item (
+      CREATE TABLE item (
         id INTEGER PRIMARY KEY AUTOINCREMENT,
         ranking_id INTEGER NOT NULL,
         name TEXT NOT NULL,
@@ -35,42 +67,32 @@ export async function initDb() {
       );
     `);
 
-    // Create index for better performance
+    // Create index for better query performance
     await db.execAsync(`
-      CREATE INDEX IF NOT EXISTS idx_item_ranking_id ON item (ranking_id);
+      CREATE INDEX idx_item_ranking_id ON item (ranking_id);
     `);
-
-    console.log('Database initialized successfully');
-    return db;
-  } catch (error) {
-    console.error('Failed to initialize database:', error);
-    throw error;
+    
+    console.log('Database tables created successfully');
   }
 }
 
-export function getDb(): SQLite.SQLiteDatabase {
+/**
+ * Get the database instance (must call initDatabase first)
+ */
+export async function getDatabase(): Promise<SQLite.SQLiteDatabase> {
   if (!db) {
-    throw new Error('Database not initialized. Call initDb() first.');
+    return await initDatabase();
   }
   return db;
 }
 
-export async function query(sql: string, params: any[] = []) {
-  const database = getDb();
-  try {
-    const result = await database.getAllAsync(sql, params);
-    return result ?? [];
-  } catch (error) {
-    console.error('Query failed:', error);
-    throw error;
-  }
-}
-
-export async function closeDb() {
+/**
+ * Close the database connection
+ */
+export async function closeDatabase() {
   if (db) {
     await db.closeAsync();
     db = null;
+    console.log('Database closed');
   }
 }
-
-export { db };
