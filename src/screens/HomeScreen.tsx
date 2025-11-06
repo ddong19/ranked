@@ -37,6 +37,7 @@ export default function HomeScreen() {
   const handleAddRanking = () => {
     closeAllSwipeables();
     // TODO: Navigate to add ranking screen
+    router.push('/add-ranking');
     console.log('Add ranking pressed');
   };
 
