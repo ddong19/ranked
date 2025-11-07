@@ -82,7 +82,6 @@ export default function HomeScreen() {
 
       <View style={styles.content}>
         <Text style={styles.sectionTitle}>Your Rankings</Text>
-        
         <FlatList
           data={rankings}
           renderItem={({ item }) => (
@@ -101,6 +100,15 @@ export default function HomeScreen() {
           contentContainerStyle={styles.listContainer}
           showsVerticalScrollIndicator={false}
           onScrollBeginDrag={closeAllSwipeables}
+          ListEmptyComponent={
+            <View style={styles.emptyStateContainer}>
+              <Text style={styles.emptyStateTitle}>No Rankings Yet!</Text>
+              <Text style={styles.emptyStateText}>
+                Your ranking universe awaits.{'\n'}
+                Tap below to create your first ranking!
+              </Text>
+            </View>
+          }
         />
 
         <View style={styles.buttonContainer}>
@@ -154,5 +162,29 @@ const styles = StyleSheet.create({
     fontWeight: '600',
     marginLeft: 8,
     letterSpacing: 0.5,
+  },
+  emptyStateContainer: {
+    flex: 1,
+    justifyContent: 'center',
+    alignItems: 'center',
+    paddingHorizontal: 40,
+    paddingBottom: 80,
+  },
+  emptyStateEmoji: {
+    fontSize: 72,
+    marginBottom: 20,
+  },
+  emptyStateTitle: {
+    color: '#fff',
+    fontSize: 24,
+    fontWeight: 'bold',
+    marginBottom: 12,
+    textAlign: 'center',
+  },
+  emptyStateText: {
+    color: '#999',
+    fontSize: 16,
+    textAlign: 'center',
+    lineHeight: 24,
   },
 });
