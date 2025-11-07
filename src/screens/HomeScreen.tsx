@@ -9,7 +9,6 @@ import RankingCard from '../components/RankingCard';
 import { useRankings } from '../logic/useRankings';
 import { closeAllSwipeables } from '../components/SwipeableItem';
 
-// For now, mock data - you'll replace this with your data layer later
 type RankingItem = {
   id: number;
   title: string;
@@ -35,7 +34,6 @@ export default function HomeScreen() {
 
   const handleAddRanking = () => {
     closeAllSwipeables();
-    // TODO: Navigate to add ranking screen
     router.push('/add-ranking');
     console.log('Add ranking pressed');
   };
@@ -82,6 +80,8 @@ export default function HomeScreen() {
 
       <View style={styles.content}>
         <Text style={styles.sectionTitle}>Your Rankings</Text>
+
+
         <FlatList
           data={rankings}
           renderItem={({ item }) => (
@@ -100,6 +100,8 @@ export default function HomeScreen() {
           contentContainerStyle={styles.listContainer}
           showsVerticalScrollIndicator={false}
           onScrollBeginDrag={closeAllSwipeables}
+
+          // message when there are no rankings
           ListEmptyComponent={
             <View style={styles.emptyStateContainer}>
               <Text style={styles.emptyStateTitle}>No Rankings Yet!</Text>
@@ -111,6 +113,7 @@ export default function HomeScreen() {
           }
         />
 
+        {/* Add Ranking button */}
         <View style={styles.buttonContainer}>
           <TouchableOpacity 
             style={styles.addButton}
@@ -121,6 +124,7 @@ export default function HomeScreen() {
             <Text style={styles.addButtonText}>ADD RANKING</Text>
           </TouchableOpacity>
         </View>
+
       </View>
     </SafeAreaView>
   );
@@ -143,7 +147,7 @@ const styles = StyleSheet.create({
   },
   listContainer: {
     flexGrow: 1,
-    paddingBottom: 100, // Space for add button
+    paddingBottom: 100,
   },
   buttonContainer: {
     backgroundColor: '#151718',
