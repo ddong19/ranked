@@ -19,7 +19,7 @@ type RankingItem = {
 
 export default function HomeScreen() {
   const router = useRouter();
-  const { rankings, refreshRankings } = useRankings();
+  const { rankings, refreshRankings, deleteRanking } = useRankings();
 
   // Refresh when screen comes into focus
   useFocusEffect(
@@ -68,8 +68,8 @@ export default function HomeScreen() {
 
   const confirmDeleteRanking = async (rankingId: number) => {
     try {
-      // TODO: Call your delete function
-      console.log('Deleting ranking:', rankingId);
+      await deleteRanking(rankingId);
+      closeAllSwipeables();
     } catch (error) {
       console.error('Failed to delete ranking:', error);
       Alert.alert('Error', 'Failed to delete ranking. Please try again.');
