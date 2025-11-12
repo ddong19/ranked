@@ -72,6 +72,39 @@ export function useRankings() {
     return rankings.find(ranking => ranking.id === id);
   }, [rankings]);
 
+  const deleteItem = async (itemId: number) => {
+    const previousRankings = rankings;
+
+    try {
+      // Optimistic update: immediately update UI
+      const optimisticRankings = rankings.map(ranking => {
+        const itemToDelete = ranking.items.find(item => item.id === itemId);
+        if (!itemToDelete) return ranking;
+
+        // Filter out deleted item and adjust remaining ranks
+        const updatedItems = ranking.items
+          .filter(item => item.id !== itemId)
+          .map(item => ({
+            ...item,
+            rank: item.rank > itemToDelete.rank ? item.rank - 1 : item.rank
+          }))
+          .sort((a, b) => a.rank - b.rank);
+
+        return { ...ranking, items: updatedItems };
+      });
+
+      setRankings(optimisticRankings);
+
+      // Persist deletion to database
+      await RankingService.deleteItem(itemId);
+    } catch (err: any) {
+      // Restore original state if database operation fails
+      setRankings(previousRankings);
+      setError(err.message || 'Failed to delete item');
+      throw err;
+    }
+  };
+
   return {
     rankings,
     loading,
@@ -80,5 +113,6 @@ export function useRankings() {
     deleteRanking,
     refreshRankings,
     getRanking,
+    deleteItem,
   };
 }

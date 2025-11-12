@@ -132,4 +132,12 @@ export class RankingService {
     const db = await getDatabase();
     await db.runAsync('DELETE FROM ranking WHERE id = ?', [id]);
   }
+
+  /**
+   * Delete an item by ID
+   */
+  static async deleteItem(itemId: number): Promise<void> {
+    const db = await getDatabase();
+    await db.runAsync('DELETE FROM item WHERE id = ?', [itemId]);
+  }
 }
