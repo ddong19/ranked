@@ -208,6 +208,18 @@ export function useRankings() {
     }
   };
 
+  const updateRanking = async (id: number, updates: { title?: string; description?: string }) => {
+    try {
+      await RankingService.updateRanking(id, updates);
+      setRankings(prev => prev.map(ranking =>
+        ranking.id === id ? { ...ranking, ...updates } : ranking
+      ));
+    } catch (err: any) {
+      setError(err.message || 'Failed to update ranking');
+      throw err;
+    }
+  };
+
   return {
     rankings,
     loading,
@@ -220,5 +232,6 @@ export function useRankings() {
     addItem,
     updateItem,
     updateItemRanks,
+    updateRanking,
   };
 }

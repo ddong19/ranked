@@ -1,4 +1,4 @@
-import { useState } from 'react';
+import { useEffect, useState } from 'react';
 import {
   Alert,
   Modal,
@@ -16,44 +16,70 @@ export interface RankingFormData {
     description: string;
     importedItems?: ParsedItem[];
   }
-  
+
   interface RankingFormProps {
+    mode?: 'create' | 'edit';
+    initialData?: {
+      title: string;
+      description: string | null;
+    };
     onSave: (data: RankingFormData) => void;
     onCancel: () => void;
+    loading?: boolean;
   }
 
-export default function RankingForm({ onSave, onCancel }: RankingFormProps) {
+export default function RankingForm({
+  mode = 'create',
+  initialData,
+  onSave,
+  onCancel,
+  loading = false
+}: RankingFormProps) {
   const [title, setTitle] = useState('');
   const [description, setDescription] = useState('');
   const [importText, setImportText] = useState('');
   const [showHelpModal, setShowHelpModal] = useState(false);
+
+  // Load initial data for edit mode
+  useEffect(() => {
+    if (mode === 'edit' && initialData) {
+      setTitle(initialData.title);
+      setDescription(initialData.description || '');
+    }
+  }, [mode, initialData]);
 
   const handleSave = () => {
     if (!title.trim()) {
       Alert.alert('Error', 'Please enter a title for your ranking');
       return;
     }
-  
+
+    if (loading) {
+      return; // Prevent double-tap
+    }
+
     // Prepare the data to pass back
     const formData: RankingFormData = {
       title: title.trim(),
       description: description.trim(),
     };
-  
-    // Parse imported items if provided
-    if (importText.trim()) {
+
+    // Parse imported items if provided (only for create mode)
+    if (mode === 'create' && importText.trim()) {
       const parsedItems = parseRankingListInput(importText.trim());
       if (parsedItems.length > 0) {
         formData.importedItems = parsedItems;
       }
     }
-  
+
     // Pass data back to parent
     onSave(formData);
   };
 
   const handleCancel = () => {
-    const hasChanges = title.trim() !== '' || description.trim() !== '' || importText.trim() !== '';
+    const originalTitle = initialData?.title || '';
+    const originalDescription = initialData?.description || '';
+    const hasChanges = title !== originalTitle || description !== originalDescription || importText.trim() !== '';
 
     if (hasChanges) {
       Alert.alert(
@@ -69,6 +95,8 @@ export default function RankingForm({ onSave, onCancel }: RankingFormProps) {
     }
   };
 
+  const headerTitle = mode === 'edit' ? 'Edit Ranking' : 'New Ranking';
+
   return (
     <SafeAreaView style={styles.container}>
       {/* Header */}
@@ -76,8 +104,12 @@ export default function RankingForm({ onSave, onCancel }: RankingFormProps) {
         <TouchableOpacity onPress={handleCancel} style={styles.cancelButton}>
           <Text style={styles.cancelText}>Cancel</Text>
         </TouchableOpacity>
-        <Text style={styles.headerTitle}>New Ranking</Text>
-        <TouchableOpacity onPress={handleSave} style={styles.saveButton}>
+        <Text style={styles.headerTitle}>{headerTitle}</Text>
+        <TouchableOpacity
+          onPress={handleSave}
+          style={[styles.saveButton, loading && styles.saveButtonDisabled]}
+          disabled={loading}
+        >
           <Text style={styles.saveText}>Save</Text>
         </TouchableOpacity>
       </View>
@@ -112,30 +144,32 @@ export default function RankingForm({ onSave, onCancel }: RankingFormProps) {
           />
         </View>
 
-        {/* Import Items Input with Help Icon */}
-        <View style={styles.inputGroup}>
-          {/* Help Icon */}
-          <View style={styles.labelRow}>
-            <Text style={styles.label}>Import Items</Text>
-            <TouchableOpacity
-              style={styles.helpIcon}
-              onPress={() => setShowHelpModal(true)}
-            >
-              <Text style={styles.helpIconText}>?</Text>
-            </TouchableOpacity>
+        {/* Import Items Input - Only show in create mode */}
+        {mode === 'create' && (
+          <View style={styles.inputGroup}>
+            {/* Help Icon */}
+            <View style={styles.labelRow}>
+              <Text style={styles.label}>Import Items</Text>
+              <TouchableOpacity
+                style={styles.helpIcon}
+                onPress={() => setShowHelpModal(true)}
+              >
+                <Text style={styles.helpIconText}>?</Text>
+              </TouchableOpacity>
+            </View>
+            <TextInput
+              style={[styles.input, styles.textArea, styles.importTextArea]}
+              value={importText}
+              onChangeText={setImportText}
+              placeholder="Enter your items, one per line"
+              placeholderTextColor="#666"
+              multiline
+              numberOfLines={6}
+              textAlignVertical="top"
+              maxLength={2000}
+            />
           </View>
-          <TextInput
-            style={[styles.input, styles.textArea, styles.importTextArea]}
-            value={importText}
-            onChangeText={setImportText}
-            placeholder="Enter your items, one per line"
-            placeholderTextColor="#666"
-            multiline
-            numberOfLines={6}
-            textAlignVertical="top"
-            maxLength={2000}
-          />
-        </View>
+        )}
       </View>
 
       {/* Help Modal */}
@@ -203,6 +237,9 @@ const styles = StyleSheet.create({
   },
   saveButton: {
     padding: 8,
+  },
+  saveButtonDisabled: {
+    opacity: 0.5,
   },
   saveText: {
     color: '#0a7ea4',

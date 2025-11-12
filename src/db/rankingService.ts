@@ -134,6 +134,18 @@ export class RankingService {
   }
 
   /**
+   * Update ranking title and description
+   */
+  static async updateRanking(id: number, updates: { title?: string; description?: string }): Promise<void> {
+    const db = await getDatabase();
+
+    await db.runAsync(
+      'UPDATE ranking SET title = ?, description = ? WHERE id = ?',
+      [updates.title || '', updates.description || null, id]
+    );
+  }
+
+  /**
    * Delete an item by ID
    */
   static async deleteItem(itemId: number): Promise<void> {

@@ -1,4 +1,5 @@
-import { Ionicons, Octicons } from '@expo/vector-icons';
+import { Feather, Ionicons, MaterialIcons, Octicons } from '@expo/vector-icons';
+import * as Clipboard from 'expo-clipboard';
 import { useFocusEffect, useLocalSearchParams, useRouter } from 'expo-router';
 import React, { useEffect, useState } from 'react';
 import {
@@ -11,6 +12,7 @@ import {
 } from 'react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
 
+import { AnimatedRankNumber } from '../components/AnimatedRankNumber';
 import AppHeader from '../components/AppHeader';
 import SwipeableItem, { closeAllSwipeables } from '../components/SwipeableItem';
 import { useRankings, type Ranking } from '../logic/useRankings';
@@ -21,6 +23,7 @@ export default function RankingDetailScreen() {
   const { getRanking, rankings, refreshRankings, deleteItem } = useRankings();
   const [ranking, setRanking] = useState<Ranking | null>(null);
   const [expandedItemId, setExpandedItemId] = useState<number | null>(null);
+  const [showCopyToast, setShowCopyToast] = useState(false);
 
   // Refresh data when screen comes into focus
   useFocusEffect(
@@ -46,6 +49,48 @@ export default function RankingDetailScreen() {
   const handleAddItem = () => {
     closeAllSwipeables();
     router.push(`/ranking/${id}/add-item`);
+  };
+
+  const handleEditRanking = () => {
+    closeAllSwipeables();
+    router.push(`/ranking/${id}/edit`);
+  };
+
+  const formatRankingForCopy = (ranking: Ranking): string => {
+    let formattedText = `=== ${ranking.title} ===\n`;
+
+    if (ranking.description && ranking.description.trim()) {
+      formattedText += `${ranking.description}\n`;
+    }
+
+    ranking.items
+      .sort((a, b) => a.rank - b.rank)
+      .forEach((item) => {
+        const notes = item.notes && item.notes.trim() ? ` (${item.notes})` : '';
+        formattedText += `${item.rank}. ${item.name}${notes}\n`;
+      });
+
+    return formattedText.trim();
+  };
+
+  const handleCopyRanking = async () => {
+    closeAllSwipeables();
+
+    if (!ranking) return;
+
+    try {
+      const formattedText = formatRankingForCopy(ranking);
+      await Clipboard.setStringAsync(formattedText);
+
+      // Show toast notification
+      setShowCopyToast(true);
+      setTimeout(() => {
+        setShowCopyToast(false);
+      }, 1500);
+    } catch (error) {
+      console.error('Failed to copy ranking:', error);
+      Alert.alert('Error', 'Failed to copy ranking. Please try again.');
+    }
   };
 
   const handleEditItem = (itemId: number) => {
@@ -83,9 +128,33 @@ export default function RankingDetailScreen() {
       <AppHeader />
 
       <View style={styles.content}>
-        {/* Header with title and description */}
+        {/* Header with title, description, and action buttons */}
         <View style={styles.headerContainer}>
-          <Text style={styles.sectionTitle}>{ranking.title}</Text>
+          <View style={styles.titleContainer}>
+            <Text style={styles.sectionTitle}>{ranking.title}</Text>
+          </View>
+          <View style={styles.headerButtons}>
+            <TouchableOpacity
+              style={styles.copyRankingButton}
+              onPress={handleCopyRanking}
+              activeOpacity={0.7}
+            >
+              <Feather name="copy" size={18} color="#fff" />
+            </TouchableOpacity>
+            <TouchableOpacity
+              style={styles.editRankingButton}
+              onPress={handleEditRanking}
+              activeOpacity={0.7}
+            >
+              <MaterialIcons name="edit" size={20} color="#fff" />
+            </TouchableOpacity>
+            {showCopyToast && (
+              <View style={styles.copyToast}>
+                <Text style={styles.copyToastText}>Ranking Copied!</Text>
+                <View style={styles.copyToastArrow} />
+              </View>
+            )}
+          </View>
         </View>
 
         {ranking.description && (
@@ -101,6 +170,34 @@ export default function RankingDetailScreen() {
           renderItem={({ item }) => {
             const isExpanded = expandedItemId === item.id;
 
+            // Function to get rank text style with colors
+            const getRankTextStyle = () => {
+              const baseStyle = item.rank === 1 ? styles.goldText :
+                              item.rank === 2 ? styles.silverText :
+                              item.rank === 3 ? styles.bronzeText :
+                              styles.rankNumberText;
+
+              // Dynamic font size based on digit count
+              const digitCount = item.rank.toString().length;
+              let fontSize = 16;
+              let fontWeight: any = 900;
+
+              if (digitCount === 2) {
+                fontSize = 13;
+              }
+              if (digitCount >= 3) {
+                fontSize = 10;
+                fontWeight = 800;
+              }
+
+              return {
+                ...baseStyle,
+                fontSize,
+                fontWeight,
+                lineHeight: 20
+              };
+            };
+
             return (
               <SwipeableItem
                 onDelete={() => handleDeleteItem(item.id)}
@@ -112,7 +209,11 @@ export default function RankingDetailScreen() {
                 >
                   <View style={[styles.itemCard, isExpanded && styles.expandedItemCard]}>
                     <View style={styles.rankNumber}>
-                      <Text style={styles.rankNumberText}>{item.rank}</Text>
+                      <AnimatedRankNumber
+                        rank={item.rank}
+                        style={getRankTextStyle()}
+                        digitCount={item.rank.toString().length}
+                      />
                     </View>
                     <View style={styles.itemContent}>
                       <View style={styles.itemHeader}>
@@ -196,13 +297,61 @@ const styles = StyleSheet.create({
     paddingHorizontal: 16,
   },
   headerContainer: {
+    flexDirection: 'row',
+    alignItems: 'flex-start',
     marginBottom: 8,
+  },
+  titleContainer: {
+    flex: 1,
+    paddingRight: 8,
   },
   sectionTitle: {
     color: '#fff',
     fontSize: 28,
     fontWeight: 'bold',
     marginLeft: 5,
+  },
+  headerButtons: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: 4,
+    marginTop: 2,
+  },
+  copyRankingButton: {
+    padding: 6,
+  },
+  editRankingButton: {
+    padding: 6,
+  },
+  copyToast: {
+    position: 'absolute',
+    top: -26,
+    left: -32,
+    backgroundColor: '#2a2a2a',
+    paddingHorizontal: 10,
+    paddingVertical: 5,
+    borderRadius: 6,
+    zIndex: 1000,
+  },
+  copyToastText: {
+    color: '#fff',
+    fontSize: 11,
+    fontWeight: '500',
+    textAlign: 'center',
+  },
+  copyToastArrow: {
+    position: 'absolute',
+    bottom: -5,
+    left: '50%',
+    marginLeft: -5,
+    width: 0,
+    height: 0,
+    borderLeftWidth: 5,
+    borderRightWidth: 5,
+    borderTopWidth: 5,
+    borderLeftColor: 'transparent',
+    borderRightColor: 'transparent',
+    borderTopColor: '#2a2a2a',
   },
   sectionDescription: {
     color: '#999',
@@ -231,6 +380,21 @@ const styles = StyleSheet.create({
     alignItems: 'center',
     justifyContent: 'center',
     marginRight: 12,
+  },
+  goldText: {
+    color: '#D4AF37',
+    fontSize: 16,
+    fontWeight: '900',
+  },
+  silverText: {
+    color: '#C0C0C0',
+    fontSize: 16,
+    fontWeight: '900',
+  },
+  bronzeText: {
+    color: '#CD7F32',
+    fontSize: 16,
+    fontWeight: '900',
   },
   rankNumberText: {
     color: '#606060',
