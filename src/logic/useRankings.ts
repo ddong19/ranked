@@ -68,6 +68,10 @@ export function useRankings() {
     await loadRankings();
   }, [loadRankings]);
 
+  const getRanking = useCallback((id: number): Ranking | undefined => {
+    return rankings.find(ranking => ranking.id === id);
+  }, [rankings]);
+
   return {
     rankings,
     loading,
@@ -75,5 +79,6 @@ export function useRankings() {
     createRanking,
     deleteRanking,
     refreshRankings,
+    getRanking,
   };
 }

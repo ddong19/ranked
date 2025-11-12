@@ -28,14 +28,18 @@ export default function HomeScreen() {
   );
 
   const handleRankingPress = (ranking: RankingItem) => {
-    // TODO: Navigate to ranking detail
-    console.log('Pressed ranking:', ranking.id);
+    closeAllSwipeables();
+    router.push({
+      pathname: `/ranking/[id]`,
+      params: {
+        id: ranking.id.toString(),
+      }
+    });
   };
 
   const handleAddRanking = () => {
     closeAllSwipeables();
     router.push('/add-ranking');
-    console.log('Add ranking pressed');
   };
 
   const handleDeleteRanking = (rankingId: number) => {
@@ -81,7 +85,6 @@ export default function HomeScreen() {
       <View style={styles.content}>
         <Text style={styles.sectionTitle}>Your Rankings</Text>
 
-
         <FlatList
           data={rankings}
           renderItem={({ item }) => (
@@ -92,7 +95,12 @@ export default function HomeScreen() {
               description: item.description,
               itemCount: item.items.length,
             }}
-            onPress={() => {}}
+            onPress={() => handleRankingPress({
+              id: item.id,
+              title: item.title,
+              description: item.description,
+              itemCount: item.items.length,
+            })}
             onDelete={() => handleDeleteRanking(item.id)}
           />
           )}
@@ -173,10 +181,6 @@ const styles = StyleSheet.create({
     alignItems: 'center',
     paddingHorizontal: 40,
     paddingBottom: 80,
-  },
-  emptyStateEmoji: {
-    fontSize: 72,
-    marginBottom: 20,
   },
   emptyStateTitle: {
     color: '#fff',
