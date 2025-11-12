@@ -45,13 +45,11 @@ export default function RankingDetailScreen() {
 
   const handleAddItem = () => {
     closeAllSwipeables();
-    // TODO: Navigate to add item screen
-    console.log('Add item pressed');
+    router.push(`/ranking/${id}/add-item`);
   };
 
   const handleEditItem = (itemId: number) => {
-    // TODO: Navigate to edit item screen
-    console.log('Edit item:', itemId);
+    router.push(`/ranking/${id}/edit-item?itemId=${itemId}`);
   };
 
   const handleDeleteItem = async (itemId: number) => {

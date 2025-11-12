@@ -140,4 +140,67 @@ export class RankingService {
     const db = await getDatabase();
     await db.runAsync('DELETE FROM item WHERE id = ?', [itemId]);
   }
+
+  /**
+   * Add a new item to a ranking
+   */
+  static async addItem(rankingId: number, data: { name: string; notes?: string; rank: number }): Promise<RankingItem> {
+    const db = await getDatabase();
+
+    const result = await db.runAsync(
+      'INSERT INTO item (name, notes, rank, ranking_id) VALUES (?, ?, ?, ?)',
+      [data.name, data.notes || null, data.rank, rankingId]
+    );
+
+    return {
+      id: result.lastInsertRowId,
+      name: data.name,
+      notes: data.notes || null,
+      rank: data.rank,
+    };
+  }
+
+  /**
+   * Update item name and notes
+   */
+  static async updateItem(itemId: number, updates: { name?: string; notes?: string }): Promise<void> {
+    const db = await getDatabase();
+
+    await db.runAsync(
+      'UPDATE item SET name = ?, notes = ? WHERE id = ?',
+      [updates.name || '', updates.notes || null, itemId]
+    );
+  }
+
+  /**
+   * Reorder items by updating all their ranks
+   */
+  static async updateItemRanks(rankingId: number, itemRanks: Record<string, number>): Promise<void> {
+    const db = await getDatabase();
+
+    await db.withTransactionAsync(async () => {
+      // Use high offset to prevent unique constraint violations during reordering
+      const maxRankResult = await db.getFirstAsync<{ max_rank: number }>(
+        'SELECT COALESCE(MAX(rank), 0) + 1000 as max_rank FROM item WHERE ranking_id = ?',
+        [rankingId]
+      );
+
+      const offset = maxRankResult?.max_rank || 1000;
+
+      // Step 1: Move all items to temporary high ranks
+      await db.runAsync(
+        'UPDATE item SET rank = rank + ? WHERE ranking_id = ?',
+        [offset, rankingId]
+      );
+
+      // Step 2: Set final ranks for each item
+      for (const [itemIdStr, newRank] of Object.entries(itemRanks)) {
+        const itemId = parseInt(itemIdStr);
+        await db.runAsync(
+          'UPDATE item SET rank = ? WHERE id = ? AND ranking_id = ?',
+          [newRank, itemId, rankingId]
+        );
+      }
+    });
+  }
 }
