@@ -76,6 +76,23 @@ export function useRankings() {
     const previousRankings = rankings;
 
     try {
+      // Find which ranking contains this item and capture the deleted rank
+      let rankingId: number | null = null;
+      let deletedRank: number | null = null;
+
+      for (const ranking of rankings) {
+        const item = ranking.items.find(i => i.id === itemId);
+        if (item) {
+          rankingId = ranking.id;
+          deletedRank = item.rank;
+          break;
+        }
+      }
+
+      if (!rankingId || deletedRank === null) {
+        throw new Error('Item not found');
+      }
+
       // Optimistic update: immediately update UI
       const optimisticRankings = rankings.map(ranking => {
         const itemToDelete = ranking.items.find(item => item.id === itemId);
@@ -97,6 +114,17 @@ export function useRankings() {
 
       // Persist deletion to database
       await RankingService.deleteItem(itemId);
+
+      // Persist the rank shifts to database
+      // All items that were ranked after the deleted item need their ranks updated
+      const updatedRanking = optimisticRankings.find(r => r.id === rankingId);
+      if (updatedRanking && updatedRanking.items.length > 0) {
+        const itemRanks: Record<string, number> = {};
+        updatedRanking.items.forEach(item => {
+          itemRanks[item.id.toString()] = item.rank;
+        });
+        await RankingService.updateItemRanks(rankingId, itemRanks);
+      }
     } catch (err: any) {
       // Restore original state if database operation fails
       setRankings(previousRankings);
