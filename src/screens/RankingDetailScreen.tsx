@@ -1,7 +1,7 @@
 import { Feather, Ionicons, MaterialIcons, Octicons } from '@expo/vector-icons';
 import * as Clipboard from 'expo-clipboard';
 import { useFocusEffect, useLocalSearchParams, useRouter } from 'expo-router';
-import React, { useEffect, useState } from 'react';
+import React, { useCallback, useEffect, useMemo } from 'react';
 import {
   Alert,
   FlatList,
@@ -15,15 +15,129 @@ import { SafeAreaView } from 'react-native-safe-area-context';
 import { AnimatedRankNumber } from '../components/AnimatedRankNumber';
 import AppHeader from '../components/AppHeader';
 import SwipeableItem, { closeAllSwipeables } from '../components/SwipeableItem';
-import { useRankings, type Ranking } from '../logic/useRankings';
+import { useRankings, type Ranking, type RankingItem } from '../logic/useRankings';
+
+// Memoized function to get rank text style - prevents recalculation
+const getRankTextStyle = (rank: number) => {
+  const baseStyle = rank === 1 ? styles.goldText :
+                  rank === 2 ? styles.silverText :
+                  rank === 3 ? styles.bronzeText :
+                  styles.rankNumberText;
+
+  // Dynamic font size based on digit count
+  const digitCount = rank.toString().length;
+  let fontSize = 16;
+  let fontWeight: any = 900;
+
+  if (digitCount === 2) {
+    fontSize = 13;
+  }
+  if (digitCount >= 3) {
+    fontSize = 10;
+    fontWeight = 800;
+  }
+
+  return {
+    ...baseStyle,
+    fontSize,
+    fontWeight,
+    lineHeight: 20
+  };
+};
+
+// Memoized item row component - only re-renders when its own props change
+interface RankingItemRowProps {
+  item: RankingItem;
+  isExpanded: boolean;
+  onPress: (itemId: number) => void;
+  onEdit: (itemId: number) => void;
+  onDelete: (itemId: number) => void;
+}
+
+const RankingItemRow = React.memo<RankingItemRowProps>(({ item, isExpanded, onPress, onEdit, onDelete }) => {
+  const handlePress = useCallback(() => {
+    onPress(item.id);
+  }, [item.id, onPress]);
+
+  const handleEdit = useCallback((e: any) => {
+    e.stopPropagation();
+    onEdit(item.id);
+  }, [item.id, onEdit]);
+
+  const handleDelete = useCallback(() => {
+    onDelete(item.id);
+  }, [item.id, onDelete]);
+
+  return (
+    <SwipeableItem onDelete={handleDelete}>
+      <TouchableOpacity
+        onPress={handlePress}
+        activeOpacity={1}
+        style={{ flex: 1 }}
+      >
+        <View style={[styles.itemCard, isExpanded && styles.expandedItemCard]}>
+          <View style={styles.rankNumber}>
+            <AnimatedRankNumber
+              rank={item.rank}
+              style={getRankTextStyle(item.rank)}
+              digitCount={item.rank.toString().length}
+            />
+          </View>
+          <View style={styles.itemContent}>
+            <View style={styles.itemHeader}>
+              <Text style={styles.itemName}>{item.name}</Text>
+              <View style={styles.itemActions}>
+                {/* Show notes icon if item has notes and NOT expanded */}
+                {!isExpanded && item.notes && item.notes.trim() && (
+                  <Octicons name="note" size={18} color="#666" style={styles.notesIcon} />
+                )}
+                {/* Show edit button if expanded */}
+                {isExpanded && (
+                  <TouchableOpacity
+                    style={styles.editButton}
+                    onPress={handleEdit}
+                    activeOpacity={0.7}
+                    hitSlop={{top: 15, bottom: 15, left: 15, right: 15}}
+                  >
+                    <Octicons name="pencil" size={18} color="#666" />
+                  </TouchableOpacity>
+                )}
+              </View>
+            </View>
+            {/* Show notes section when expanded */}
+            {isExpanded && (
+              <View style={styles.notesSection}>
+                {item.notes && item.notes.trim() ? (
+                  <Text style={styles.notesText}>{item.notes}</Text>
+                ) : (
+                  <Text style={styles.noNotesText}>
+                    No notes associated with this item
+                  </Text>
+                )}
+              </View>
+            )}
+          </View>
+        </View>
+      </TouchableOpacity>
+    </SwipeableItem>
+  );
+}, (prevProps, nextProps) => {
+  // Custom comparison - only re-render if these specific props changed
+  return (
+    prevProps.item.id === nextProps.item.id &&
+    prevProps.item.name === nextProps.item.name &&
+    prevProps.item.notes === nextProps.item.notes &&
+    prevProps.item.rank === nextProps.item.rank &&
+    prevProps.isExpanded === nextProps.isExpanded
+  );
+});
 
 export default function RankingDetailScreen() {
   const { id } = useLocalSearchParams<{ id: string }>();
   const router = useRouter();
-  const { getRanking, rankings, refreshRankings, deleteItem } = useRankings();
-  const [ranking, setRanking] = useState<Ranking | null>(null);
-  const [expandedItemId, setExpandedItemId] = useState<number | null>(null);
-  const [showCopyToast, setShowCopyToast] = useState(false);
+  const { getRanking, refreshRankings, deleteItem, loading } = useRankings();
+  const [expandedItemId, setExpandedItemId] = React.useState<number | null>(null);
+  const [showCopyToast, setShowCopyToast] = React.useState(false);
 
   // Refresh data when screen comes into focus
   useFocusEffect(
@@ -32,19 +146,19 @@ export default function RankingDetailScreen() {
     }, [refreshRankings])
   );
 
-  // Update ranking whenever rankings data changes
-  useEffect(() => {
-    if (!id || !rankings.length) return;
+  // Memoize ranking lookup - only recomputes when id or getRanking changes
+  const ranking = useMemo(() => {
+    if (!id) return null;
+    return getRanking(parseInt(id)) || null;
+  }, [id, getRanking]);
 
-    const foundRanking = getRanking(parseInt(id));
-    if (foundRanking) {
-      setRanking(foundRanking);
-    } else if (rankings.length > 0) {
-      // Only show error if rankings have loaded but this one isn't found
+  // Check if ranking exists - only after data has loaded
+  useEffect(() => {
+    if (!loading && id && ranking === null) {
       Alert.alert('Error', 'Ranking not found');
       router.back();
     }
-  }, [rankings, id, getRanking, router]);
+  }, [id, ranking, loading, router]);
 
   const handleAddItem = () => {
     closeAllSwipeables();
@@ -93,30 +207,44 @@ export default function RankingDetailScreen() {
     }
   };
 
-  const handleEditItem = (itemId: number) => {
-    router.push(`/ranking/${id}/edit-item?itemId=${itemId}`);
-  };
+  const handleItemPress = useCallback((itemId: number) => {
+    // Close any open swipeables
+    closeAllSwipeables();
 
-  const handleDeleteItem = async (itemId: number) => {
+    // Toggle expansion: if already expanded, collapse; otherwise expand
+    setExpandedItemId(prev => prev === itemId ? null : itemId);
+  }, []);
+
+  const handleEditItemCallback = useCallback((itemId: number) => {
+    router.push(`/ranking/${id}/edit-item?itemId=${itemId}`);
+  }, [id, router]);
+
+  const handleDeleteItemCallback = useCallback(async (itemId: number) => {
     try {
       // Close expanded item if we're deleting it
-      if (expandedItemId === itemId) {
-        setExpandedItemId(null);
-      }
+      setExpandedItemId(prev => prev === itemId ? null : prev);
       await deleteItem(itemId);
     } catch (error) {
       console.error('Failed to delete item:', error);
       Alert.alert('Error', 'Failed to delete item. Please try again.');
     }
-  };
+  }, [deleteItem]);
 
-  const handleItemPress = (itemId: number) => {
-    // Close any open swipeables
-    closeAllSwipeables();
-
-    // Toggle expansion: if already expanded, collapse; otherwise expand
-    setExpandedItemId(expandedItemId === itemId ? null : itemId);
-  };
+  // Memoized render function for FlatList
+  // Note: expandedItemId is NOT in dependencies - it's read from closure
+  // This prevents recreating renderItem on every expand/collapse
+  // React.memo in RankingItemRow handles the actual re-render decision
+  const renderItem = useCallback(({ item }: { item: RankingItem }) => {
+    return (
+      <RankingItemRow
+        item={item}
+        isExpanded={expandedItemId === item.id}
+        onPress={handleItemPress}
+        onEdit={handleEditItemCallback}
+        onDelete={handleDeleteItemCallback}
+      />
+    );
+  }, [handleItemPress, handleEditItemCallback, handleDeleteItemCallback]);
 
   // Don't render until we have data
   if (!ranking) {
@@ -167,96 +295,7 @@ export default function RankingDetailScreen() {
         <FlatList
           data={ranking.items || []}
           keyExtractor={(item) => item.id.toString()}
-          renderItem={({ item }) => {
-            const isExpanded = expandedItemId === item.id;
-
-            // Function to get rank text style with colors
-            const getRankTextStyle = () => {
-              const baseStyle = item.rank === 1 ? styles.goldText :
-                              item.rank === 2 ? styles.silverText :
-                              item.rank === 3 ? styles.bronzeText :
-                              styles.rankNumberText;
-
-              // Dynamic font size based on digit count
-              const digitCount = item.rank.toString().length;
-              let fontSize = 16;
-              let fontWeight: any = 900;
-
-              if (digitCount === 2) {
-                fontSize = 13;
-              }
-              if (digitCount >= 3) {
-                fontSize = 10;
-                fontWeight = 800;
-              }
-
-              return {
-                ...baseStyle,
-                fontSize,
-                fontWeight,
-                lineHeight: 20
-              };
-            };
-
-            return (
-              <SwipeableItem
-                onDelete={() => handleDeleteItem(item.id)}
-              >
-                <TouchableOpacity
-                  onPress={() => handleItemPress(item.id)}
-                  activeOpacity={1}
-                  style={{ flex: 1 }}
-                >
-                  <View style={[styles.itemCard, isExpanded && styles.expandedItemCard]}>
-                    <View style={styles.rankNumber}>
-                      <AnimatedRankNumber
-                        rank={item.rank}
-                        style={getRankTextStyle()}
-                        digitCount={item.rank.toString().length}
-                      />
-                    </View>
-                    <View style={styles.itemContent}>
-                      <View style={styles.itemHeader}>
-                        <Text style={styles.itemName}>{item.name}</Text>
-                        <View style={styles.itemActions}>
-                          {/* Show notes icon if item has notes and NOT expanded */}
-                          {!isExpanded && item.notes && item.notes.trim() && (
-                            <Octicons name="note" size={18} color="#666" style={styles.notesIcon} />
-                          )}
-                          {/* Show edit button if expanded */}
-                          {isExpanded && (
-                            <TouchableOpacity
-                              style={styles.editButton}
-                              onPress={(e) => {
-                                e.stopPropagation();
-                                handleEditItem(item.id);
-                              }}
-                              activeOpacity={0.7}
-                              hitSlop={{top: 15, bottom: 15, left: 15, right: 15}}
-                            >
-                              <Octicons name="pencil" size={18} color="#666" />
-                            </TouchableOpacity>
-                          )}
-                        </View>
-                      </View>
-                      {/* Show notes section when expanded */}
-                      {isExpanded && (
-                        <View style={styles.notesSection}>
-                          {item.notes && item.notes.trim() ? (
-                            <Text style={styles.notesText}>{item.notes}</Text>
-                          ) : (
-                            <Text style={styles.noNotesText}>
-                              No notes associated with this item
-                            </Text>
-                          )}
-                        </View>
-                      )}
-                    </View>
-                  </View>
-                </TouchableOpacity>
-              </SwipeableItem>
-            );
-          }}
+          renderItem={renderItem}
           contentContainerStyle={styles.listContainer}
           showsVerticalScrollIndicator={false}
           onScrollBeginDrag={closeAllSwipeables}

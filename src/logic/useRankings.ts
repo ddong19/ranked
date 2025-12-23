@@ -6,6 +6,7 @@ export type { ParsedItem, RankingFormData, RankingItem, Ranking } from '../db/ra
 
 export function useRankings() {
   const [rankings, setRankings] = useState<Ranking[]>([]);
+  const [rankingsMap, setRankingsMap] = useState<Map<number, Ranking>>(new Map());
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
 
@@ -32,6 +33,11 @@ export function useRankings() {
       setError(null);
       const rankingsWithItems = await RankingService.loadRankings();
       setRankings(rankingsWithItems);
+
+      // Build map for O(1) lookups
+      const map = new Map<number, Ranking>();
+      rankingsWithItems.forEach(ranking => map.set(ranking.id, ranking));
+      setRankingsMap(map);
     } catch (err: any) {
       setError(err.message || 'Failed to load rankings');
       console.error('Error loading rankings:', err);
@@ -41,10 +47,11 @@ export function useRankings() {
   const createRanking = async (data: RankingFormData): Promise<Ranking> => {
     try {
       const newRanking = await RankingService.createRanking(data);
-      
+
       // Update local state
       setRankings((prev) => [newRanking, ...prev]); // Add to front
-      
+      setRankingsMap((prev) => new Map(prev).set(newRanking.id, newRanking));
+
       return newRanking;
     } catch (err: any) {
       setError(err.message || 'Failed to create ranking');
@@ -57,6 +64,11 @@ export function useRankings() {
     try {
       await RankingService.deleteRanking(id);
       setRankings((prev) => prev.filter((ranking) => ranking.id !== id));
+      setRankingsMap((prev) => {
+        const newMap = new Map(prev);
+        newMap.delete(id);
+        return newMap;
+      });
     } catch (err: any) {
       setError(err.message || 'Failed to delete ranking');
       console.error('Error deleting ranking:', err);
@@ -69,58 +81,77 @@ export function useRankings() {
   }, [loadRankings]);
 
   const getRanking = useCallback((id: number): Ranking | undefined => {
-    return rankings.find(ranking => ranking.id === id);
-  }, [rankings]);
+    return rankingsMap.get(id);
+  }, [rankingsMap]);
 
   const deleteItem = async (itemId: number) => {
     const previousRankings = rankings;
+    const previousMap = rankingsMap;
 
     try {
-      // Find which ranking contains this item and capture the deleted rank
+      // Find which ranking contains this item - O(1) if we know ranking, O(n) worst case
       let rankingId: number | null = null;
-      let deletedRank: number | null = null;
+      let targetRanking: Ranking | null = null;
+      let itemToDelete: { id: number; rank: number } | null = null;
 
-      for (const ranking of rankings) {
-        const item = ranking.items.find(i => i.id === itemId);
+      // Optimization: If there's only one ranking, we know which one it is
+      if (rankings.length === 1) {
+        targetRanking = rankings[0];
+        rankingId = targetRanking.id;
+        const item = targetRanking.items.find(i => i.id === itemId);
         if (item) {
-          rankingId = ranking.id;
-          deletedRank = item.rank;
-          break;
+          itemToDelete = item;
+        }
+      } else {
+        // Search through rankings to find the item
+        for (const ranking of rankings) {
+          const item = ranking.items.find(i => i.id === itemId);
+          if (item) {
+            rankingId = ranking.id;
+            targetRanking = ranking;
+            itemToDelete = item;
+            break;
+          }
         }
       }
 
-      if (!rankingId || deletedRank === null) {
+      if (!rankingId || !targetRanking || !itemToDelete) {
         throw new Error('Item not found');
       }
 
-      // Optimistic update: immediately update UI
-      const optimisticRankings = rankings.map(ranking => {
-        const itemToDelete = ranking.items.find(item => item.id === itemId);
-        if (!itemToDelete) return ranking;
+      // Filter out deleted item and adjust remaining ranks - only for THIS ranking
+      const updatedItems = targetRanking.items
+        .filter(item => item.id !== itemId)
+        .map(item => ({
+          ...item,
+          rank: item.rank > itemToDelete!.rank ? item.rank - 1 : item.rank
+        }))
+        .sort((a, b) => a.rank - b.rank);
 
-        // Filter out deleted item and adjust remaining ranks
-        const updatedItems = ranking.items
-          .filter(item => item.id !== itemId)
-          .map(item => ({
-            ...item,
-            rank: item.rank > itemToDelete.rank ? item.rank - 1 : item.rank
-          }))
-          .sort((a, b) => a.rank - b.rank);
+      const updatedRanking = { ...targetRanking, items: updatedItems };
 
-        return { ...ranking, items: updatedItems };
-      });
+      // Update ONLY the affected ranking in the array (not all rankings)
+      const optimisticRankings = rankings.map(ranking =>
+        ranking.id === rankingId ? updatedRanking : ranking
+      );
 
       setRankings(optimisticRankings);
+
+      // Update ONLY the affected ranking in the map
+      setRankingsMap(prev => {
+        const newMap = new Map(prev);
+        newMap.set(rankingId!, updatedRanking);
+        return newMap;
+      });
 
       // Persist deletion to database
       await RankingService.deleteItem(itemId);
 
       // Persist the rank shifts to database
       // All items that were ranked after the deleted item need their ranks updated
-      const updatedRanking = optimisticRankings.find(r => r.id === rankingId);
-      if (updatedRanking && updatedRanking.items.length > 0) {
+      if (updatedItems.length > 0) {
         const itemRanks: Record<string, number> = {};
-        updatedRanking.items.forEach(item => {
+        updatedItems.forEach(item => {
           itemRanks[item.id.toString()] = item.rank;
         });
         await RankingService.updateItemRanks(rankingId, itemRanks);
@@ -128,6 +159,7 @@ export function useRankings() {
     } catch (err: any) {
       // Restore original state if database operation fails
       setRankings(previousRankings);
+      setRankingsMap(previousMap);
       setError(err.message || 'Failed to delete item');
       throw err;
     }
@@ -135,6 +167,7 @@ export function useRankings() {
 
   const addItem = async (rankingId: number, data: { name: string; notes?: string; rank: number }) => {
     const previousRankings = rankings;
+    const previousMap = rankingsMap;
 
     try {
       // Create temporary item with placeholder ID for immediate UI update
@@ -158,6 +191,11 @@ export function useRankings() {
 
       setRankings(optimisticRankings);
 
+      // Update map
+      const newMap = new Map(rankingsMap);
+      optimisticRankings.forEach(ranking => newMap.set(ranking.id, ranking));
+      setRankingsMap(newMap);
+
       // Persist to database and get the real item with actual ID
       const newItem = await RankingService.addItem(rankingId, data);
 
@@ -174,10 +212,26 @@ export function useRankings() {
         return ranking;
       }));
 
+      // Update map with final data
+      setRankingsMap(prev => {
+        const updatedMap = new Map(prev);
+        const updatedRanking = prev.get(rankingId);
+        if (updatedRanking) {
+          updatedMap.set(rankingId, {
+            ...updatedRanking,
+            items: updatedRanking.items.map(item =>
+              item.id === tempItem.id ? newItem : item
+            ).sort((a, b) => a.rank - b.rank)
+          });
+        }
+        return updatedMap;
+      });
+
       return newItem;
     } catch (err: any) {
       // Restore original state if database operation fails
       setRankings(previousRankings);
+      setRankingsMap(previousMap);
       setError(err.message || 'Failed to add item');
       throw err;
     }
@@ -185,6 +239,7 @@ export function useRankings() {
 
   const updateItem = async (itemId: number, updates: { name?: string; notes?: string }) => {
     const previousRankings = rankings;
+    const previousMap = rankingsMap;
 
     try {
       // Update UI immediately for smooth user experience
@@ -196,12 +251,16 @@ export function useRankings() {
       });
 
       setRankings(optimisticRankings);
+      const newMap = new Map(rankingsMap);
+      optimisticRankings.forEach(ranking => newMap.set(ranking.id, ranking));
+      setRankingsMap(newMap);
 
       // Persist to database
       await RankingService.updateItem(itemId, updates);
     } catch (err: any) {
       // Restore original state if database operation fails
       setRankings(previousRankings);
+      setRankingsMap(previousMap);
       setError(err.message || 'Failed to update item');
       throw err;
     }
@@ -230,6 +289,15 @@ export function useRankings() {
         }
         return ranking;
       }));
+
+      setRankingsMap(prev => {
+        const newMap = new Map(prev);
+        const ranking = prev.get(rankingId);
+        if (ranking) {
+          newMap.set(rankingId, { ...ranking, items: updatedItems });
+        }
+        return newMap;
+      });
     } catch (err: any) {
       setError(err.message || 'Failed to update item ranks');
       throw err;
@@ -242,6 +310,14 @@ export function useRankings() {
       setRankings(prev => prev.map(ranking =>
         ranking.id === id ? { ...ranking, ...updates } : ranking
       ));
+      setRankingsMap(prev => {
+        const newMap = new Map(prev);
+        const ranking = prev.get(id);
+        if (ranking) {
+          newMap.set(id, { ...ranking, ...updates });
+        }
+        return newMap;
+      });
     } catch (err: any) {
       setError(err.message || 'Failed to update ranking');
       throw err;
