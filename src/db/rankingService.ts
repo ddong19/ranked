@@ -146,11 +146,31 @@ export class RankingService {
   }
 
   /**
-   * Delete an item by ID
+   * Delete an item by ID and shift ranks
    */
   static async deleteItem(itemId: number): Promise<void> {
     const db = await getDatabase();
-    await db.runAsync('DELETE FROM item WHERE id = ?', [itemId]);
+
+    await db.withTransactionAsync(async () => {
+      // First, get the item's rank and ranking_id before deleting
+      const item = await db.getFirstAsync<{ rank: number; ranking_id: number }>(
+        'SELECT rank, ranking_id FROM item WHERE id = ?',
+        [itemId]
+      );
+
+      if (!item) {
+        throw new Error('Item not found');
+      }
+
+      // Delete the item
+      await db.runAsync('DELETE FROM item WHERE id = ?', [itemId]);
+
+      // Shift down all items that were ranked after this one
+      await db.runAsync(
+        'UPDATE item SET rank = rank - 1 WHERE ranking_id = ? AND rank > ?',
+        [item.ranking_id, item.rank]
+      );
+    });
   }
 
   /**
@@ -191,6 +211,11 @@ export class RankingService {
     const db = await getDatabase();
 
     await db.withTransactionAsync(async () => {
+      // Get list of item IDs we're updating
+      const itemIds = Object.keys(itemRanks).map(id => parseInt(id));
+
+      if (itemIds.length === 0) return;
+
       // Use high offset to prevent unique constraint violations during reordering
       const maxRankResult = await db.getFirstAsync<{ max_rank: number }>(
         'SELECT COALESCE(MAX(rank), 0) + 1000 as max_rank FROM item WHERE ranking_id = ?',
@@ -199,10 +224,11 @@ export class RankingService {
 
       const offset = maxRankResult?.max_rank || 1000;
 
-      // Step 1: Move all items to temporary high ranks
+      // Step 1: Move ONLY the items we're reordering to temporary high ranks
+      const placeholders = itemIds.map(() => '?').join(',');
       await db.runAsync(
-        'UPDATE item SET rank = rank + ? WHERE ranking_id = ?',
-        [offset, rankingId]
+        `UPDATE item SET rank = rank + ? WHERE ranking_id = ? AND id IN (${placeholders})`,
+        [offset, rankingId, ...itemIds]
       );
 
       // Step 2: Set final ranks for each item

@@ -42,8 +42,15 @@ export default function AddItemScreen() {
 
       // If user specified a different rank, reorder the list
       if (data.rank > 0 && desiredRank !== endRank) {
-        // Build the new list with the created item
-        const items = [...currentRanking.items, newItem];
+        // Get the fresh ranking data after addItem reloaded it
+        const freshRanking = getRanking(rankingId);
+        if (!freshRanking) {
+          Alert.alert('Error', 'Failed to reload ranking');
+          return;
+        }
+
+        // Build the new list with the created item using FRESH data
+        const items = [...freshRanking.items];
         // Remove new item from end and insert at desired position
         const filteredItems = items.filter(item => item.id !== newItem.id);
         filteredItems.splice(desiredRank - 1, 0, newItem);
