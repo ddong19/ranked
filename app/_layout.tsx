@@ -13,12 +13,12 @@ function RootLayoutNav() {
     if (loading) return;
 
     const inLoginScreen = segments[0] === 'login';
+    const inProfileScreen = segments[0] === 'profile';
 
-    if (!user && !inLoginScreen) {
-      // Redirect to login if not authenticated
-      router.replace('/login');
-    } else if (user && inLoginScreen) {
-      // Redirect to home if authenticated
+    // Only redirect if user is logged in and on login screen
+    // Anonymous users can use the app without logging in
+    if (user && inLoginScreen) {
+      // Redirect authenticated users away from login screen
       router.replace('/');
     }
   }, [user, loading, segments]);
