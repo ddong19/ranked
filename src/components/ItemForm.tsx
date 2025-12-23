@@ -49,7 +49,7 @@ export default function ItemForm({
       return; // Prevent double-tap
     }
 
-    const parsedRank = rank.trim() ? parseInt(rank.trim()) : (initialData?.rank || 1);
+    const parsedRank = rank.trim() ? parseInt(rank.trim()) : (initialData?.rank || 0);
 
     const itemData: ItemData = {
       name: name.trim(),

@@ -29,7 +29,7 @@ export default function AddItemScreen() {
       // Always create item at end to avoid unique constraint violation
       const currentItemCount = currentRanking.items?.length || 0;
       const endRank = currentItemCount + 1;
-      const desiredRank = data.rank ? Math.min(data.rank, endRank) : endRank;
+      const desiredRank = data.rank > 0 ? Math.min(data.rank, endRank) : endRank;
 
       const newItemData = {
         name: data.name,
@@ -41,7 +41,7 @@ export default function AddItemScreen() {
       const newItem = await addItem(rankingId, newItemData);
 
       // If user specified a different rank, reorder the list
-      if (data.rank && desiredRank !== endRank) {
+      if (data.rank > 0 && desiredRank !== endRank) {
         // Build the new list with the created item
         const items = [...currentRanking.items, newItem];
         // Remove new item from end and insert at desired position
