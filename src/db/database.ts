@@ -73,6 +73,20 @@ async function createTablesIfNeeded() {
       );
     `);
 
+    // Create sync_queue table to track all operations that need to sync
+    await db.execAsync(`
+      CREATE TABLE sync_queue (
+        id INTEGER PRIMARY KEY AUTOINCREMENT,
+        user_id TEXT NOT NULL,
+        operation TEXT NOT NULL,
+        entity_type TEXT NOT NULL,
+        entity_id INTEGER,
+        supabase_id TEXT,
+        payload TEXT,
+        created_at TEXT DEFAULT CURRENT_TIMESTAMP
+      );
+    `);
+
     // Create indexes for better query performance
     await db.execAsync(`
       CREATE INDEX idx_item_ranking_id ON item (ranking_id);
@@ -126,6 +140,31 @@ async function migrateExistingTables() {
       `);
 
       console.log('Database migration completed successfully');
+    }
+
+    // Check if sync_queue table exists
+    const syncQueueExists = await db.getFirstAsync(`
+      SELECT name FROM sqlite_master
+      WHERE type='table' AND name='sync_queue'
+    `);
+
+    if (!syncQueueExists) {
+      console.log('Creating sync_queue table...');
+
+      await db.execAsync(`
+        CREATE TABLE sync_queue (
+          id INTEGER PRIMARY KEY AUTOINCREMENT,
+          user_id TEXT NOT NULL,
+          operation TEXT NOT NULL,
+          entity_type TEXT NOT NULL,
+          entity_id INTEGER,
+          supabase_id TEXT,
+          payload TEXT,
+          created_at TEXT DEFAULT CURRENT_TIMESTAMP
+        );
+      `);
+
+      console.log('sync_queue table created successfully');
     }
   } catch (error) {
     console.error('Migration error:', error);
