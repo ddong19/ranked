@@ -38,22 +38,19 @@ async function createTablesIfNeeded() {
 
   // Check if tables already exist
   const tablesExist = await db.getFirstAsync(`
-    SELECT name FROM sqlite_master
+    SELECT name FROM sqlite_master 
     WHERE type='table' AND name='ranking'
   `);
 
   if (!tablesExist) {
     console.log('Creating database tables for first time...');
-
+    
     // Create ranking table
     await db.execAsync(`
       CREATE TABLE ranking (
         id INTEGER PRIMARY KEY AUTOINCREMENT,
-        user_id TEXT NOT NULL DEFAULT 'anonymous',
         title TEXT NOT NULL,
         description TEXT,
-        synced INTEGER DEFAULT 0,
-        supabase_id TEXT,
         created_at TEXT DEFAULT CURRENT_TIMESTAMP
       );
     `);
@@ -63,73 +60,19 @@ async function createTablesIfNeeded() {
       CREATE TABLE item (
         id INTEGER PRIMARY KEY AUTOINCREMENT,
         ranking_id INTEGER NOT NULL,
-        user_id TEXT NOT NULL DEFAULT 'anonymous',
         name TEXT NOT NULL,
         notes TEXT,
         rank INTEGER NOT NULL,
-        synced INTEGER DEFAULT 0,
-        supabase_id TEXT,
         FOREIGN KEY (ranking_id) REFERENCES ranking (id) ON DELETE CASCADE
       );
     `);
 
-    // Create indexes for better query performance
+    // Create index for better query performance
     await db.execAsync(`
       CREATE INDEX idx_item_ranking_id ON item (ranking_id);
-      CREATE INDEX idx_ranking_user_id ON ranking (user_id);
-      CREATE INDEX idx_item_user_id ON item (user_id);
-      CREATE INDEX idx_ranking_synced ON ranking (synced);
-      CREATE INDEX idx_item_synced ON item (synced);
     `);
-
+    
     console.log('Database tables created successfully');
-  } else {
-    // Migration: Add new columns if they don't exist
-    await migrateExistingTables();
-  }
-}
-
-/**
- * Migrate existing tables to add new columns
- */
-async function migrateExistingTables() {
-  if (!db) throw new Error('Database not initialized');
-
-  try {
-    // Check if user_id column exists in ranking table
-    const rankingColumns = await db.getAllAsync(`PRAGMA table_info(ranking)`);
-    const hasUserId = rankingColumns.some((col: any) => col.name === 'user_id');
-
-    if (!hasUserId) {
-      console.log('Migrating existing database schema...');
-
-      // Add new columns to ranking table
-      await db.execAsync(`
-        ALTER TABLE ranking ADD COLUMN user_id TEXT NOT NULL DEFAULT 'anonymous';
-        ALTER TABLE ranking ADD COLUMN synced INTEGER DEFAULT 0;
-        ALTER TABLE ranking ADD COLUMN supabase_id TEXT;
-      `);
-
-      // Add new columns to item table
-      await db.execAsync(`
-        ALTER TABLE item ADD COLUMN user_id TEXT NOT NULL DEFAULT 'anonymous';
-        ALTER TABLE item ADD COLUMN synced INTEGER DEFAULT 0;
-        ALTER TABLE item ADD COLUMN supabase_id TEXT;
-      `);
-
-      // Create new indexes
-      await db.execAsync(`
-        CREATE INDEX IF NOT EXISTS idx_ranking_user_id ON ranking (user_id);
-        CREATE INDEX IF NOT EXISTS idx_item_user_id ON item (user_id);
-        CREATE INDEX IF NOT EXISTS idx_ranking_synced ON ranking (synced);
-        CREATE INDEX IF NOT EXISTS idx_item_synced ON item (synced);
-      `);
-
-      console.log('Database migration completed successfully');
-    }
-  } catch (error) {
-    console.error('Migration error:', error);
-    // Continue anyway - tables might already be migrated
   }
 }
 
