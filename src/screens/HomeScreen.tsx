@@ -1,7 +1,7 @@
 import { Ionicons } from '@expo/vector-icons';
 import { useFocusEffect, useRouter } from 'expo-router';
 import React from 'react';
-import { ActivityIndicator, Alert, FlatList, StyleSheet, Text, TouchableOpacity, View } from 'react-native';
+import { Alert, FlatList, StyleSheet, Text, TouchableOpacity, View } from 'react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
 
 import AppHeader from '../components/AppHeader'
@@ -18,7 +18,7 @@ type RankingItem = {
 
 export default function HomeScreen() {
   const router = useRouter();
-  const { rankings, loading, refreshRankings, deleteRanking } = useRankings();
+  const { rankings, refreshRankings, deleteRanking } = useRankings();
 
   // Refresh when screen comes into focus
   useFocusEffect(
@@ -109,22 +109,15 @@ export default function HomeScreen() {
           showsVerticalScrollIndicator={false}
           onScrollBeginDrag={closeAllSwipeables}
 
-          // Loading or empty state
+          // message when there are no rankings
           ListEmptyComponent={
-            loading ? (
-              <View style={styles.emptyStateContainer}>
-                <ActivityIndicator size="large" color="#fff" />
-                <Text style={styles.loadingText}>Loading your rankings...</Text>
-              </View>
-            ) : (
-              <View style={styles.emptyStateContainer}>
-                <Text style={styles.emptyStateTitle}>No Rankings Yet!</Text>
-                <Text style={styles.emptyStateText}>
-                  Your ranking universe awaits.{'\n'}
-                  Tap below to create your first ranking!
-                </Text>
-              </View>
-            )
+            <View style={styles.emptyStateContainer}>
+              <Text style={styles.emptyStateTitle}>No Rankings Yet!</Text>
+              <Text style={styles.emptyStateText}>
+                Your ranking universe awaits.{'\n'}
+                Tap below to create your first ranking!
+              </Text>
+            </View>
           }
         />
 
@@ -201,11 +194,5 @@ const styles = StyleSheet.create({
     fontSize: 16,
     textAlign: 'center',
     lineHeight: 24,
-  },
-  loadingText: {
-    color: '#999',
-    fontSize: 16,
-    marginTop: 16,
-    textAlign: 'center',
   },
 });
