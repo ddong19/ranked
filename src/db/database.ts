@@ -52,7 +52,6 @@ async function createTablesIfNeeded() {
         user_id TEXT NOT NULL DEFAULT 'anonymous',
         title TEXT NOT NULL,
         description TEXT,
-        synced INTEGER DEFAULT 0,
         supabase_id TEXT,
         created_at TEXT DEFAULT CURRENT_TIMESTAMP
       );
@@ -67,7 +66,6 @@ async function createTablesIfNeeded() {
         name TEXT NOT NULL,
         notes TEXT,
         rank INTEGER NOT NULL,
-        synced INTEGER DEFAULT 0,
         supabase_id TEXT,
         FOREIGN KEY (ranking_id) REFERENCES ranking (id) ON DELETE CASCADE
       );
@@ -92,8 +90,6 @@ async function createTablesIfNeeded() {
       CREATE INDEX idx_item_ranking_id ON item (ranking_id);
       CREATE INDEX idx_ranking_user_id ON ranking (user_id);
       CREATE INDEX idx_item_user_id ON item (user_id);
-      CREATE INDEX idx_ranking_synced ON ranking (synced);
-      CREATE INDEX idx_item_synced ON item (synced);
     `);
 
     console.log('Database tables created successfully');
@@ -120,14 +116,12 @@ async function migrateExistingTables() {
       // Add new columns to ranking table
       await db.execAsync(`
         ALTER TABLE ranking ADD COLUMN user_id TEXT NOT NULL DEFAULT 'anonymous';
-        ALTER TABLE ranking ADD COLUMN synced INTEGER DEFAULT 0;
         ALTER TABLE ranking ADD COLUMN supabase_id TEXT;
       `);
 
       // Add new columns to item table
       await db.execAsync(`
         ALTER TABLE item ADD COLUMN user_id TEXT NOT NULL DEFAULT 'anonymous';
-        ALTER TABLE item ADD COLUMN synced INTEGER DEFAULT 0;
         ALTER TABLE item ADD COLUMN supabase_id TEXT;
       `);
 
@@ -135,8 +129,6 @@ async function migrateExistingTables() {
       await db.execAsync(`
         CREATE INDEX IF NOT EXISTS idx_ranking_user_id ON ranking (user_id);
         CREATE INDEX IF NOT EXISTS idx_item_user_id ON item (user_id);
-        CREATE INDEX IF NOT EXISTS idx_ranking_synced ON ranking (synced);
-        CREATE INDEX IF NOT EXISTS idx_item_synced ON item (synced);
       `);
 
       console.log('Database migration completed successfully');

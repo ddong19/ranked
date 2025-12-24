@@ -99,11 +99,8 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
           console.log('Downloading data from Supabase...');
           await SyncService.downloadFromSupabase(userId);
         }
-      } else {
-        // User has local data, sync any unsynced changes
-        console.log('Syncing local changes to Supabase...');
-        await SyncService.syncAllToSupabase(userId);
       }
+      // Note: No need to manually sync - SyncManager will process queue automatically
     } catch (error) {
       console.error('Error handling user login:', error);
     }
