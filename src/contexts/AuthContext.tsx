@@ -10,7 +10,7 @@ interface AuthContextType {
   session: Session | null;
   loading: boolean;
   isAnonymous: boolean;
-  userId: string;
+  userId: string | null; // null means not ready yet
   signIn: (email: string, password: string) => Promise<void>;
   signUp: (email: string, password: string) => Promise<void>;
   signOut: () => Promise<void>;
@@ -34,11 +34,13 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
 
       // If user is logged in, check if we need to download their data
       if (session?.user) {
+        // Keep loading true until download completes
         await handleUserLogin(session.user.id);
         // Start background sync manager
         SyncManager.start(session.user.id);
       }
 
+      // Now safe to set loading false - data is ready
       setLoading(false);
     });
 
@@ -51,6 +53,7 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
 
       // Handle sign-in: download data from Supabase if exists
       if (event === 'SIGNED_IN' && session?.user) {
+        setLoading(true); // Keep loading during download
         await handleUserLogin(session.user.id);
         // Start background sync manager
         SyncManager.start(session.user.id);
@@ -72,6 +75,7 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
    */
   const handleUserLogin = async (userId: string) => {
     try {
+      console.log('[AuthContext] handleUserLogin starting for user:', userId.substring(0, 8));
       const db = await getDatabase();
 
       // Check if we have any local data for this user
@@ -79,35 +83,42 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
         'SELECT COUNT(*) as count FROM ranking WHERE user_id = ?',
         [userId]
       );
+      console.log('[AuthContext] Local data count:', localData?.count || 0);
 
       // Check if we have anonymous data to migrate
       const anonymousData = await db.getFirstAsync<{ count: number }>(
         'SELECT COUNT(*) as count FROM ranking WHERE user_id = ?',
         ['anonymous']
       );
+      console.log('[AuthContext] Anonymous data count:', anonymousData?.count || 0);
 
       // If user has anonymous data, migrate it
       if (anonymousData && anonymousData.count > 0) {
-        console.log(`Migrating ${anonymousData.count} anonymous rankings...`);
-        setLoading(true); // Show loading during migration
+        console.log(`[AuthContext] Migrating ${anonymousData.count} anonymous rankings...`);
         await SyncService.migrateAnonymousData(userId);
         setDataMigrated(true); // Trigger UI refresh
-        setLoading(false);
+        console.log('[AuthContext] Migration complete');
         return;
       }
 
       // If user has no local data, check Supabase
       if (!localData || localData.count === 0) {
+        console.log('[AuthContext] No local data, checking Supabase...');
         const hasSupabaseData = await SyncService.hasSupabaseData(userId);
 
         if (hasSupabaseData) {
-          console.log('Downloading data from Supabase...');
+          console.log('[AuthContext] Downloading data from Supabase...');
           await SyncService.downloadFromSupabase(userId);
+          console.log('[AuthContext] Download complete');
+        } else {
+          console.log('[AuthContext] No data in Supabase either');
         }
+      } else {
+        console.log('[AuthContext] Using existing local data');
       }
       // Note: No need to manually sync - SyncManager will process queue automatically
     } catch (error) {
-      console.error('Error handling user login:', error);
+      console.error('[AuthContext] Error handling user login:', error);
     }
   };
 
@@ -175,7 +186,7 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
     session,
     loading,
     isAnonymous: !user,
-    userId: user?.id || 'anonymous',
+    userId: loading ? null : (user?.id || 'anonymous'), // null while loading, then set to real userId or 'anonymous'
     signIn,
     signUp,
     signOut,

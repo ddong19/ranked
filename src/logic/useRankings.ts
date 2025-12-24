@@ -12,16 +12,17 @@ export function useRankings() {
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
 
-  // Initialize database on mount
+  // Initialize database and load when userId is ready
   useEffect(() => {
-    initializeAndLoad();
-  }, []);
+    if (userId === null) {
+      // Auth is still loading, wait
+      console.log('[useRankings] Waiting for auth to load...');
+      return;
+    }
 
-  // Reload when userId changes (anonymous → authenticated)
-  useEffect(() => {
-    console.log(`[useRankings] userId changed to: ${userId}, reloading...`);
-    loadRankings();
-  }, [userId, loadRankings]);
+    console.log(`[useRankings] Auth ready, userId: ${userId}`);
+    initializeAndLoad();
+  }, [userId]); // Re-run when userId changes from null → actual value
 
   // Also refresh when data is migrated
   useEffect(() => {
