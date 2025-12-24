@@ -6,7 +6,7 @@ import { useAuth } from '../contexts/AuthContext';
 export type { ParsedItem, RankingFormData, RankingItem, Ranking } from '../db/rankingService';
 
 export function useRankings() {
-  const { userId, dataMigrated } = useAuth();
+  const { userId } = useAuth();
   const [rankings, setRankings] = useState<Ranking[]>([]);
   const [rankingsMap, setRankingsMap] = useState<Map<number, Ranking>>(new Map());
   const [loading, setLoading] = useState(true);
@@ -16,20 +16,6 @@ export function useRankings() {
   useEffect(() => {
     initializeAndLoad();
   }, []);
-
-  // Reload when userId changes (anonymous → authenticated)
-  useEffect(() => {
-    console.log(`[useRankings] userId changed to: ${userId}, reloading...`);
-    loadRankings();
-  }, [userId, loadRankings]);
-
-  // Also refresh when data is migrated
-  useEffect(() => {
-    if (dataMigrated) {
-      console.log('[useRankings] Data migrated, refreshing rankings...');
-      loadRankings();
-    }
-  }, [dataMigrated, loadRankings]);
 
   const initializeAndLoad = async () => {
     try {

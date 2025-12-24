@@ -15,7 +15,6 @@ interface AuthContextType {
   signUp: (email: string, password: string) => Promise<void>;
   signOut: () => Promise<void>;
   syncNow: () => Promise<void>;
-  dataMigrated: boolean; // Flag to indicate when migration completes
 }
 
 const AuthContext = createContext<AuthContextType | undefined>(undefined);
@@ -24,7 +23,6 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
   const [user, setUser] = useState<User | null>(null);
   const [session, setSession] = useState<Session | null>(null);
   const [loading, setLoading] = useState(true);
-  const [dataMigrated, setDataMigrated] = useState(false);
 
   useEffect(() => {
     // Get initial session
@@ -89,10 +87,7 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
       // If user has anonymous data, migrate it
       if (anonymousData && anonymousData.count > 0) {
         console.log(`Migrating ${anonymousData.count} anonymous rankings...`);
-        setLoading(true); // Show loading during migration
         await SyncService.migrateAnonymousData(userId);
-        setDataMigrated(true); // Trigger UI refresh
-        setLoading(false);
         return;
       }
 
@@ -142,7 +137,6 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
         if (anonymousData && anonymousData.count > 0) {
           console.log(`Migrating ${anonymousData.count} anonymous rankings to new account...`);
           await SyncService.migrateAnonymousData(data.user.id);
-          setDataMigrated(true); // Trigger UI refresh
         }
       } catch (err) {
         console.error('Error migrating data during signup:', err);
@@ -180,7 +174,6 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
     signUp,
     signOut,
     syncNow,
-    dataMigrated,
   };
 
   return <AuthContext.Provider value={value}>{children}</AuthContext.Provider>;
