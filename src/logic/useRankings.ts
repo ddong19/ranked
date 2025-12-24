@@ -1,12 +1,10 @@
 import { useState, useEffect, useCallback } from 'react';
 import { RankingService, type Ranking, type RankingFormData } from '../db/rankingService';
 import { initDatabase } from '../db/database';
-import { useAuth } from '../contexts/AuthContext';
 
 export type { ParsedItem, RankingFormData, RankingItem, Ranking } from '../db/rankingService';
 
 export function useRankings() {
-  const { userId } = useAuth();
   const [rankings, setRankings] = useState<Ranking[]>([]);
   const [rankingsMap, setRankingsMap] = useState<Map<number, Ranking>>(new Map());
   const [loading, setLoading] = useState(true);
@@ -33,7 +31,7 @@ export function useRankings() {
   const loadRankings = useCallback(async () => {
     try {
       setError(null);
-      const rankingsWithItems = await RankingService.loadRankings(userId);
+      const rankingsWithItems = await RankingService.loadRankings();
       setRankings(rankingsWithItems);
 
       // Build map for O(1) lookups
@@ -44,11 +42,11 @@ export function useRankings() {
       setError(err.message || 'Failed to load rankings');
       console.error('Error loading rankings:', err);
     }
-  }, [userId]);
+  }, []);
 
   const createRanking = async (data: RankingFormData): Promise<Ranking> => {
     try {
-      const newRanking = await RankingService.createRanking(data, userId);
+      const newRanking = await RankingService.createRanking(data);
 
       // Update local state
       setRankings((prev) => [newRanking, ...prev]); // Add to front
@@ -102,7 +100,7 @@ export function useRankings() {
   const addItem = async (rankingId: number, data: { name: string; notes?: string; rank: number }) => {
     try {
       // Add item to database
-      const newItem = await RankingService.addItem(rankingId, data, userId);
+      const newItem = await RankingService.addItem(rankingId, data);
 
       // Reload from database to get fresh state
       await loadRankings();
@@ -117,7 +115,7 @@ export function useRankings() {
   const updateItem = async (itemId: number, updates: { name?: string; notes?: string }) => {
     try {
       // Update in database
-      await RankingService.updateItem(itemId, updates, userId);
+      await RankingService.updateItem(itemId, updates);
 
       // Reload from database to get fresh state
       await loadRankings();
@@ -136,7 +134,7 @@ export function useRankings() {
       });
 
       // Update ranks in database
-      await RankingService.updateItemRanks(rankingId, itemRanks, userId);
+      await RankingService.updateItemRanks(rankingId, itemRanks);
 
       // Reload from database to get fresh state
       await loadRankings();
@@ -149,7 +147,7 @@ export function useRankings() {
   const updateRanking = async (id: number, updates: { title?: string; description?: string }) => {
     try {
       // Update in database
-      await RankingService.updateRanking(id, updates, userId);
+      await RankingService.updateRanking(id, updates);
 
       // Reload from database to get fresh state
       await loadRankings();
