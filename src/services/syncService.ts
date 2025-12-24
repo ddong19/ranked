@@ -41,7 +41,7 @@ export class SyncService {
       throw new Error('Ranking not found');
     }
 
-    // If already exists in Supabase, update it
+    // If already synced, update it
     if (ranking.supabase_id) {
       const { error } = await supabase
         .from('rankings')
@@ -70,9 +70,9 @@ export class SyncService {
 
     if (error) throw error;
 
-    // Update local DB with supabase_id
+    // Update local DB with supabase_id and mark as synced
     await db.runAsync(
-      'UPDATE ranking SET supabase_id = ? WHERE id = ?',
+      'UPDATE ranking SET supabase_id = ?, synced = 1 WHERE id = ?',
       [data.id, localRankingId]
     );
 
@@ -99,7 +99,7 @@ export class SyncService {
     }>('SELECT * FROM item WHERE ranking_id = ?', [localRankingId]);
 
     for (const item of items) {
-      // If already exists in Supabase, update it
+      // If already synced, update it
       if (item.supabase_id) {
         const { error } = await supabase
           .from('items')
@@ -128,15 +128,77 @@ export class SyncService {
 
         if (error) throw error;
 
-        // Update local DB with supabase_id
+        // Update local DB with supabase_id and mark as synced
         await db.runAsync(
-          'UPDATE item SET supabase_id = ? WHERE id = ?',
+          'UPDATE item SET supabase_id = ?, synced = 1 WHERE id = ?',
           [data.id, item.id]
         );
       }
     }
   }
 
+  /**
+   * Sync all unsynced data for a user
+   */
+  static async syncAllToSupabase(userId: string): Promise<void> {
+    const db = await getDatabase();
+
+    console.log(`[SyncService] Starting sync for user ${userId.substring(0, 8)}...`);
+
+    // Get all unsynced rankings for this user
+    const unsyncedRankings = await db.getAllAsync<{
+      id: number;
+      title: string;
+      description: string | null;
+      supabase_id: string | null;
+    }>('SELECT * FROM ranking WHERE user_id = ? AND synced = 0', [userId]);
+
+    console.log(`[SyncService] Found ${unsyncedRankings.length} unsynced rankings`);
+
+    for (const ranking of unsyncedRankings) {
+      console.log(`[SyncService] Syncing ranking: ${ranking.title}`);
+      // Sync the ranking
+      const supabaseRankingId = await this.syncRankingToSupabase(ranking.id, userId);
+
+      // Sync all items for this ranking
+      await this.syncItemsToSupabase(ranking.id, supabaseRankingId, userId);
+    }
+
+    // Also check for unsynced items in already-synced rankings
+    const unsyncedItems = await db.getAllAsync<{
+      id: number;
+      ranking_id: number;
+      name: string;
+    }>('SELECT * FROM item WHERE user_id = ? AND synced = 0', [userId]);
+
+    console.log(`[SyncService] Found ${unsyncedItems.length} unsynced items`);
+
+    if (unsyncedItems.length > 0) {
+      // Group items by ranking_id
+      const itemsByRanking = new Map<number, typeof unsyncedItems>();
+      for (const item of unsyncedItems) {
+        if (!itemsByRanking.has(item.ranking_id)) {
+          itemsByRanking.set(item.ranking_id, []);
+        }
+        itemsByRanking.get(item.ranking_id)!.push(item);
+      }
+
+      // Sync items for each ranking
+      for (const [rankingId, items] of itemsByRanking) {
+        const ranking = await db.getFirstAsync<{ supabase_id: string | null }>(
+          'SELECT supabase_id FROM ranking WHERE id = ?',
+          [rankingId]
+        );
+
+        if (ranking?.supabase_id) {
+          console.log(`[SyncService] Syncing ${items.length} items for ranking ${rankingId}`);
+          await this.syncItemsToSupabase(rankingId, ranking.supabase_id, userId);
+        }
+      }
+    }
+
+    console.log(`[SyncService] Sync completed`);
+  }
 
   /**
    * Migrate anonymous data to authenticated user
@@ -144,33 +206,22 @@ export class SyncService {
   static async migrateAnonymousData(newUserId: string): Promise<void> {
     const db = await getDatabase();
 
-    // Get all anonymous rankings before migrating
-    const anonymousRankings = await db.getAllAsync<{ id: number }>(
-      'SELECT id FROM ranking WHERE user_id = ?',
-      ['anonymous']
-    );
-
     await db.withTransactionAsync(async () => {
       // Update all anonymous rankings to belong to the new user
       await db.runAsync(
-        'UPDATE ranking SET user_id = ? WHERE user_id = ?',
+        'UPDATE ranking SET user_id = ?, synced = 0 WHERE user_id = ?',
         [newUserId, 'anonymous']
       );
 
       // Update all anonymous items to belong to the new user
       await db.runAsync(
-        'UPDATE item SET user_id = ? WHERE user_id = ?',
+        'UPDATE item SET user_id = ?, synced = 0 WHERE user_id = ?',
         [newUserId, 'anonymous']
       );
     });
 
-    // Queue all migrated rankings for sync
-    const { SyncQueue } = await import('./syncQueue');
-    for (const ranking of anonymousRankings) {
-      await SyncQueue.enqueue(newUserId, 'create', 'ranking', ranking.id);
-    }
-
-    console.log(`Migrated ${anonymousRankings.length} anonymous rankings to user ${newUserId.substring(0, 8)}`);
+    // Now sync everything to Supabase
+    await this.syncAllToSupabase(newUserId);
   }
 
   /**
@@ -198,7 +249,7 @@ export class SyncService {
       for (const ranking of rankings) {
         // Insert ranking
         const rankingResult = await db.runAsync(
-          'INSERT INTO ranking (user_id, title, description, supabase_id) VALUES (?, ?, ?, ?)',
+          'INSERT INTO ranking (user_id, title, description, synced, supabase_id) VALUES (?, ?, ?, 1, ?)',
           [userId, ranking.title, ranking.description, ranking.id]
         );
 
@@ -217,7 +268,7 @@ export class SyncService {
         if (items) {
           for (const item of items) {
             await db.runAsync(
-              'INSERT INTO item (ranking_id, user_id, name, notes, rank, supabase_id) VALUES (?, ?, ?, ?, ?, ?)',
+              'INSERT INTO item (ranking_id, user_id, name, notes, rank, synced, supabase_id) VALUES (?, ?, ?, ?, ?, 1, ?)',
               [localRankingId, userId, item.name, item.notes, item.rank, item.id]
             );
           }

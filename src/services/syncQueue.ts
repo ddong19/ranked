@@ -122,7 +122,7 @@ export class SyncQueue {
         );
 
         if (!ranking?.supabase_id) {
-          throw new Error('Cannot sync item - ranking not in Supabase yet');
+          throw new Error('Cannot sync item - ranking not synced yet');
         }
 
         await SyncService.syncItemsToSupabase(item.ranking_id, ranking.supabase_id, op.user_id);

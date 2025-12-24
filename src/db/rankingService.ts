@@ -96,7 +96,7 @@ export class RankingService {
     await db.withTransactionAsync(async () => {
       // 1. Create the ranking
       const result = await db.runAsync(
-        'INSERT INTO ranking (title, description, user_id) VALUES (?, ?, ?)',
+        'INSERT INTO ranking (title, description, user_id, synced) VALUES (?, ?, ?, 0)',
         [data.title, data.description || null, userId]
       );
 
@@ -109,7 +109,7 @@ export class RankingService {
           const rank = i + 1; // Rank starts at 1
 
           const itemResult = await db.runAsync(
-            'INSERT INTO item (name, notes, rank, ranking_id, user_id) VALUES (?, ?, ?, ?, ?)',
+            'INSERT INTO item (name, notes, rank, ranking_id, user_id, synced) VALUES (?, ?, ?, ?, ?, 0)',
             [parsedItem.name, parsedItem.notes || null, rank, rankingId, userId]
           );
 
@@ -152,7 +152,7 @@ export class RankingService {
     // Delete from local DB first (this also deletes items due to CASCADE)
     await db.runAsync('DELETE FROM ranking WHERE id = ?', [id]);
 
-    // Queue deletion if it exists in Supabase
+    // Queue deletion for sync if it was synced to Supabase
     if (ranking?.supabase_id && ranking?.user_id !== 'anonymous') {
       await SyncQueue.enqueue(ranking.user_id, 'delete', 'ranking', undefined, ranking.supabase_id);
     }
@@ -216,7 +216,7 @@ export class RankingService {
       );
     });
 
-    // Queue deletion if it exists in Supabase
+    // Queue deletion for sync if it was synced
     if (supabaseId && userId && userId !== 'anonymous') {
       await SyncQueue.enqueue(userId, 'delete', 'item', undefined, supabaseId);
     }
